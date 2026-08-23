@@ -1,17 +1,59 @@
-\documentclass[12pt,a4paper]{report}
+\documentclass[13pt,a4paper,openany]{extreport}
 \usepackage[utf8]{inputenc}
 \usepackage[T5]{fontenc}
 \usepackage[vietnamese]{babel}
+\usepackage{mathptmx} % Font Times New Roman
+\usepackage{setspace}
+\setstretch{1.2} % Giãn dòng 1.2
+\usepackage{microtype} % Căn chỉnh ký tự vi mô, hạn chế chữ bị dãn xấu
+\setlength{\parindent}{1cm} % Lùi đầu dòng đúng chuẩn
+\setlength{\parskip}{6pt} % Cách nhau 6pt giữa các đoạn văn (không bị dính cục)
+\setlength{\intextsep}{10pt} % Khoảng trắng trên/dưới hình vẽ vừa phải
+\setlength{\textfloatsep}{10pt} % Khoảng trắng hình vẽ ở đầu/cuối trang
 \usepackage{graphicx}
-\usepackage{hyperref}
+\usepackage[hidelinks]{hyperref} % Loại bỏ viền đỏ xấu xí quanh các link mục lục
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{tabularx}
 \usepackage{booktabs}
-\usepackage{caption}
+\usepackage[labelsep=endash]{caption} % Dấu gạch ngang sau chữ Hình (vd: Hình 1.1 -)
 \usepackage{float}
 \usepackage{geometry}
-\geometry{a4paper, left=3cm, right=2cm, top=2cm, bottom=2cm}
+\geometry{a4paper, left=3.5cm, right=2cm, top=2.5cm, bottom=2.5cm}
+\usepackage{fancyhdr}
+\usepackage{titlesec} % Tùy chỉnh cỡ chữ tên chương/mục
+
+% --- Định dạng tên Chương: 14pt, in đậm, dạng "1. Tên chương" ---
+\titleformat{\chapter}[hang]
+  {\normalfont\fontsize{14}{17}\bfseries}
+  {\thechapter.}{0.5em}{}
+\titlespacing*{\chapter}{0pt}{20pt}{15pt}
+
+% --- Định dạng Section: 13pt, in đậm ---
+\titleformat{\section}
+  {\normalfont\fontsize{13}{16}\bfseries}
+  {\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+
+% --- Định dạng Subsection: 13pt, in đậm, in nghiêng ---
+\titleformat{\subsection}
+  {\normalfont\fontsize{13}{16}\bfseries\itshape}
+  {\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+
+% Cài đặt Header & Footer theo chuẩn:
+% Tên đề tài bên phải Header, Số trang bên phải Footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[R]{Triển khai Hệ thống Giám sát và Cảnh báo Thông tin Tập trung}
+\fancyfoot[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyhead[R]{Triển khai Hệ thống Giám sát và Cảnh báo Thông tin Tập trung}
+  \fancyfoot[R]{\thepage}
+  \renewcommand{\headrulewidth}{0.4pt}
+}
 
 % Cấu hình định dạng code block
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
@@ -40,12 +82,35 @@
 
 \begin{document}
 
-\title{\textbf{Đề tài: Triển khai Hệ thống Giám sát và Cảnh báo Thông tin Tập trung với Grafana, Prometheus và Wazuh SIEM}}
-\author{}
-\date{}
-\maketitle
+
+
+\chapter*{LỜI CAM ĐOAN}
+% Sinh viên điền nội dung lời cam đoan vào đây
+Tôi xin cam đoan các kết quả trình bày trong báo cáo đồ án này dựa trên quá trình nghiên cứu và thực nghiệm của riêng tôi, không sao chép bất kỳ kết quả nghiên cứu nào của các tác giả khác.
+Nội dung của đồ án có tham khảo, sử dụng một số tài liệu, thông tin từ các nguồn tài liệu khoa học, trang web chuyên ngành và các nghiên cứu đã công bố; tất cả đều đã được trích dẫn và liệt kê đầy đủ trong danh mục tài liệu tham khảo.
+
+
+\chapter*{LỜI CẢM ƠN}
+
+Lời đầu tiên, tôi xin bày tỏ lòng biết ơn sâu sắc tới thầy \textbf{Nguyễn Việt Nhật} --- giảng viên hướng dẫn trực tiếp của tôi. Trong suốt quá trình thực hiện đồ án, thầy đã tận tình định hướng về mặt kỹ thuật, chỉ ra những điểm còn hạn chế và truyền đạt những kinh nghiệm thực tế vô cùng quý giá. Sự hỗ trợ và động viên của thầy là nguồn động lực lớn nhất giúp tôi hoàn thành đề tài này.
+
+Tôi xin trân trọng cảm ơn toàn thể quý thầy cô trong \textbf{Khoa Công nghệ Thông tin, Trường Đại học Xây dựng Hà Nội} đã tận tụy truyền đạt kiến thức và tạo mọi điều kiện thuận lợi cho tôi trong suốt quá trình học tập tại trường. Những kiến thức nền tảng được tích lũy qua các môn học là hành trang không thể thiếu để tôi tiếp cận và giải quyết các vấn đề kỹ thuật trong đồ án này.
+
+Cuối cùng, tôi xin gửi lời cảm ơn chân thành nhất tới \textbf{gia đình và bạn bè} đã luôn ủng hộ, chia sẻ và đồng hành cùng tôi trong suốt thời gian thực hiện đồ án.
+
+Do kiến thức và kinh nghiệm thực tế còn có những giới hạn nhất định, đồ án này không tránh khỏi những thiếu sót. Tôi rất mong nhận được sự góp ý, nhận xét từ quý thầy cô và các bạn để đề tài có thể được hoàn thiện hơn.
+
+\vspace{1em}
+\begin{flushright}
+\textit{Hà Nội, tháng \the\month\ năm \the\year}\\[6pt]
+\textit{Sinh viên thực hiện}\\[24pt]
+\textbf{Nguyễn Ngọc Đức}
+\end{flushright}
 
 \tableofcontents
+
+\listoffigures
+\addcontentsline{toc}{chapter}{Danh mục hình vẽ}
 \newpage
 
 \chapter{MỞ ĐẦU}
@@ -399,15 +464,14 @@ Dựa trên nền tảng dữ liệu đã hội tụ, lộ trình phát triển 
     \item \textbf{Kiến tạo hệ sinh thái Vòng lặp kín (Closed-loop System):} Hoàn thiện quy trình tự động hóa toàn trình: Nhận diện sự cố nhanh chóng (Grafana) $\rightarrow$ Phân tích ngữ cảnh thông minh (AI) $\rightarrow$ Phê duyệt và Thực thi khắc phục an toàn.
 \end{enumerate}
 
-\chapter*{TÀI LIỆU THAM KHẢO}
 \addcontentsline{toc}{chapter}{TÀI LIỆU THAM KHẢO}
-\begin{enumerate}
-    \item \textbf{Wazuh Documentation.} (2024). \textit{Wazuh SIEM and XDR Comprehensive Documentation}. Truy cập từ: \url{https://documentation.wazuh.com/}
-    \item \textbf{Prometheus Authors.} (2024). \textit{Prometheus - Monitoring system \& time series database}. Truy cập từ: \url{https://prometheus.io/docs/}
-    \item \textbf{Grafana Labs.} (2024). \textit{Grafana Documentation - Data visualization and Alerting}. Truy cập từ: \url{https://grafana.com/docs/}
-    \item \textbf{OpenSearch Contributors.} (2024). \textit{OpenSearch Documentation - Distributed Search and Analytics Engine}. Truy cập từ: \url{https://opensearch.org/docs/latest/}
-    \item \textbf{MITRE Corporation.} (2024). \textit{MITRE ATT\&CK Framework - Enterprise Matrix}. Truy cập từ: \url{https://attack.mitre.org/}
-    \item \textbf{Samber.} (2024). \textit{Awesome Prometheus Alerts}. Truy cập từ: \url{https://samber.github.io/awesome-prometheus-alerts/}
-\end{enumerate}
+\begin{thebibliography}{99}
+    \bibitem{wazuh} \textbf{Wazuh Documentation.} (2024). \textit{Wazuh SIEM and XDR Comprehensive Documentation}. Truy cập từ: \url{https://documentation.wazuh.com/}
+    \bibitem{prometheus} \textbf{Prometheus Authors.} (2024). \textit{Prometheus - Monitoring system \& time series database}. Truy cập từ: \url{https://prometheus.io/docs/}
+    \bibitem{grafana} \textbf{Grafana Labs.} (2024). \textit{Grafana Documentation - Data visualization and Alerting}. Truy cập từ: \url{https://grafana.com/docs/}
+    \bibitem{opensearch} \textbf{OpenSearch Contributors.} (2024). \textit{OpenSearch Documentation - Distributed Search and Analytics Engine}. Truy cập từ: \url{https://opensearch.org/docs/latest/}
+    \bibitem{mitre} \textbf{MITRE Corporation.} (2024). \textit{MITRE ATT\&CK Framework - Enterprise Matrix}. Truy cập từ: \url{https://attack.mitre.org/}
+    \bibitem{samber} \textbf{Samber.} (2024). \textit{Awesome Prometheus Alerts}. Truy cập từ: \url{https://samber.github.io/awesome-prometheus-alerts/}
+\end{thebibliography}
 
 \end{document}
