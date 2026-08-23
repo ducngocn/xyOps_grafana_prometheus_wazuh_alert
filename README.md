@@ -1,5 +1,5 @@
-# BÁO CÁO ĐỒ ÁN
-**Đề tài: Triển khai Hệ thống Giám sát và Cảnh báo Thông tin Tập trung với Grafana, Prometheus và Wazuh SIEM**
+
+# **Đề tài: Triển khai Hệ thống Giám sát và Cảnh báo Thông tin Tập trung với Grafana, Prometheus và Wazuh SIEM**
 
 ---
 
