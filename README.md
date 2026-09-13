@@ -94,6 +94,18 @@ Kiến trúc hệ thống được phân chia thành 4 khối chức năng, ho�
 
 <img src="images/architec.png" width="750">
 
+> [!NOTE]
+> **Phân định luồng xử lý Cảnh báo trên Grafana (Metrics & Security Logs):**
+> - **Data Source (Nguồn dữ liệu vào):** Grafana khai báo Prometheus (`http://prometheus:9090`) và Wazuh Indexer (`http://wazuh-indexer:9200`) làm Data Source để đọc dữ liệu.
+> - **Evaluation Interval & Alert Rules (Tần suất & Quy tắc đánh giá):** Grafana chủ động gửi câu lệnh PromQL sang Prometheus theo chu kỳ định kỳ (ví dụ `Evaluate every 1m`) để kiểm tra chỉ số xem có vượt ngưỡng vi phạm không.
+> - **Contact Point (Điểm nhận cảnh báo ra):** Đích đến gửi thông báo sự cố (như Telegram Bot API). Khi Alert Rule nổ, Grafana phát yêu cầu HTTP POST mang thông báo đã được định dạng qua Go Template (kèm **Deep Link**) tới nhóm Telegram của quản trị viên.
+
+> [!NOTE]
+> **Phân định luồng giám sát & Cảnh báo Hạ tầng Mạng Zabbix (Agentless SNMP):**
+> - **Thu thập dữ liệu (SNMP Polling):** Kích hoạt SNMP Daemon (UDP 161) trên các thiết bị mạng (pfSense, Cisco Core Switch). Zabbix Server thực hiện kéo dữ liệu không agent định kỳ mỗi 5s (`ifInOctets`, `operStatus`).
+> - **Đánh giá Triggers & Telegram Webhook (5-10s):** Khi dữ liệu match với Trigger sự cố (như đứt link `operStatus = 2`), Zabbix tự động phát thông báo màu đỏ `[PROBLEM]` / xanh `[RESOLVED]` tới nhóm Telegram qua Webhook trong 5-10 giây.
+> - **Đồng bộ Grafana:** Grafana sử dụng plugin `alexanderzobnin-zabbix-app` kết nối Zabbix API (cổng 8080) để vẽ đồ thị băng thông và trạng thái mạng tập trung.
+
 ---
 
 ## CHƯƠNG 3: QUY TRÌNH TRIỂN KHAI THỰC TẾ
@@ -249,8 +261,16 @@ Sau khi hội tụ thành công các nguồn dữ liệu, các bảng điều kh
 - Biểu đồ Metrics phản ánh mức độ tiêu thụ tài nguyên phần cứng (CPU, RAM, Disk I/O) theo thời gian thực.
 - Bảng Log an ninh thống kê chi tiết các sự kiện tấn công bị Wazuh ngăn chặn, phân loại theo mức độ nghiêm trọng (Level) và Rule ID.
 
-### 3.6 Thiết lập Cơ chế Cảnh báo (Alerting) trên hệ sinh thái Wazuh
-Quy trình tinh chỉnh và kích hoạt các luồng cảnh báo an ninh được thao tác trực tiếp trên giao diện quản trị. Chuỗi thao tác thực tế được minh họa chi tiết dưới đây:
+### 3.6 Thiết lập Cơ chế Cảnh báo (Alerting) và Luồng Xử lý Sự cố trên Wazuh SIEM
+
+Quy trình phát hiện sự cố an ninh và kích hoạt cảnh báo phản ứng nhanh trên phân hệ Wazuh SIEM được thiết lập vận hành theo luồng kỹ thuật 4 bước khép kín:
+
+1. **Thu thập Log (Collect):** Tác tử `Wazuh Agent` trên máy chủ mục tiêu (`linux_agent`) thu thập Syslog/Auth log thô và đẩy (Push) về `Wazuh Manager` qua cổng mã hóa `1514`.
+2. **Giải mã & Đánh giá Quy tắc (Decode & Ruleset Matching):** `Wazuh Manager` sử dụng các Decoders bóc tách dữ liệu (`srcip`, `dstuser`), đối chiếu với bộ quy tắc an ninh (**Custom Rules 100001–100004**). Đặc biệt, **Rule 100004** đếm tần suất vi phạm (8 lần thất bại/120s từ cùng IP) để tự động kích hoạt cảnh báo **SSH Brute-force (MITRE ATT&CK T1110)** ở mức độ rủi ro nghiêm trọng (**Level 12**).
+3. **Nạp & Đánh chỉ mục (Indexing):** Dịch vụ `Filebeat` nhận gói tin cảnh báo JSON từ Manager và chuyển tiếp tới cơ sở dữ liệu `Wazuh Indexer (OpenSearch)` lưu trữ tập trung tại cổng REST API `9200` (`wazuh-alerts-*`).
+4. **Truy vấn & Bắn Cảnh báo kèm Deep Link (Grafana & Telegram):** Grafana truy vấn dữ liệu từ Indexer qua plugin `grafana-opensearch-datasource`. Khi xuất hiện sự kiện an ninh `Level >= 7`, Grafana Alerting kích hoạt gửi tin nhắn về Telegram Bot API, đồng thời nhúng **Deep Link (Mã hóa RISON)** cho phép quản trị viên click trực tiếp để chuyển hướng tới giao diện Wazuh SIEM với bộ lọc IP kẻ tấn công được tự động điền sẵn để truy vết tức thời.
+
+Chuỗi thao tác cấu hình thực tế được minh họa chi tiết dưới đây:
 
 <img src="images/image-13.png" width="600">
 

@@ -259,6 +259,32 @@ Kiến trúc hệ thống được phân chia thành 5 khối chức năng, ho�
     \caption{Sơ đồ luồng dữ liệu và cảnh báo hệ thống}
 \end{figure}
 
+\paragraph{Phân định cơ chế xử lý Cảnh báo trên Grafana:}
+Để làm rõ luồng vận hành trên sơ đồ kiến trúc, phân hệ Grafana Alerting được định nghĩa chính xác theo 3 thành phần kĩ thuật chính:
+\begin{itemize}
+    \item \textbf{Data Source (Nguồn dữ liệu đầu vào):} Prometheus, Wazuh Indexer và Zabbix đóng vai trò là Data Source. Grafana chủ động truy vấn (Pull/PromQL/REST API) dữ liệu từ các kho lưu trữ này.
+    \item \textbf{Alert Rules \& Evaluation Interval (Bộ quy tắc và Tần suất đánh giá):} Grafana định kỳ gửi các biểu thức PromQL (ví dụ: \texttt{RAM khả dụng < 10\%}) sang Prometheus theo chu kỳ quy định (\textit{Evaluation Interval}). Khi dữ liệu vi phạm ngưỡng liên tục trong khoảng thời gian chờ, trạng thái cảnh báo sẽ chuyển sang \texttt{Firing}.
+    \item \textbf{Contact Point (Điểm nhận cảnh báo đầu ra):} Điểm tiếp nhận thông báo sự cố cuối cùng (Telegram Bot API). Khi cảnh báo nổ, Grafana đóng vai trò client phát yêu cầu HTTPS POST chứa nội dung thông báo đã được định dạng qua Go Template về nhóm Telegram của quản trị viên.
+\end{itemize}
+
+\paragraph{Chi tiết Luồng xử lý 4 bước khép kín của Wazuh SIEM:}
+Bên cạnh luồng Metrics từ Prometheus, luồng xử lý nhật ký an ninh của Wazuh SIEM trên sơ đồ kiến trúc được vận hành theo 4 giai đoạn kỹ thuật:
+\begin{enumerate}
+    \item \textbf{Giai đoạn Thu thập Log (Collect):} Tác tử \textit{Wazuh Agent} thu thập nhật ký hệ thống (Syslog, Auth log) từ các máy chủ mục tiêu và đẩy dữ liệu thô về \textit{Wazuh Manager} qua cổng giao tiếp mã hóa \texttt{1514}.
+    \item \textbf{Giai đoạn Giải mã và Đối soát Quy tắc (Decode \& Ruleset Matching):} \textit{Wazuh Manager} sử dụng bộ giải mã (Decoders) bóc tách các trường dữ liệu (\texttt{srcip}, \texttt{dstuser}) và kiểm tra đối chiếu với danh sách IP an toàn (CDB List \texttt{trusted\_ips}). Hệ thống thiết lập bộ quy tắc tùy biến (\textit{Custom Rules 100001--100004}); trong đó, \textbf{Rule 100004} tự động định danh hành vi tấn công \textbf{SSH Brute-force (MITRE ATT\&CK T1110)} với mức độ rủi ro nghiêm trọng \texttt{Level 12} khi phát hiện 8 nỗ lực đăng nhập thất bại trong vòng 120 giây.
+    \item \textbf{Giai đoạn Đánh chỉ mục và Lưu trữ (Indexing):} Dịch vụ \textit{Filebeat} nhận cảnh báo định dạng JSON từ Manager, chuyển tiếp gói dữ liệu sang cơ sở dữ liệu \textit{Wazuh Indexer (OpenSearch)} để lưu trữ và đánh chỉ mục tập trung tại cổng REST API \texttt{9200} (\texttt{wazuh-alerts-*}).
+    \item \textbf{Giai đoạn Trực quan hóa và Cảnh báo Phản ứng nhanh (Grafana \& Deep Link):} Grafana kết nối tới Indexer thông qua plugin \texttt{grafana-opensearch-datasource}. Khi sự kiện an ninh vượt ngưỡng (\texttt{Level $\ge 7$}), Grafana Alerting tự động gửi tin nhắn báo động về nhóm Telegram của quản trị viên, đồng thời tích hợp liên kết sâu (\textit{Deep Link}) mã hóa RISON cho phép mở trực tiếp bộ lọc IP kẻ tấn công trên giao diện Wazuh OpenSearch Dashboards để phục vụ điều tra sự cố tức thời.
+\end{enumerate}
+
+\paragraph{Chi tiết Luồng giám sát và Cảnh báo Hạ tầng Mạng của Zabbix (Agentless SNMP):}
+Song song với luồng phần cứng từ Prometheus và nhật ký an ninh từ Wazuh, luồng giám sát lưu lượng mạng từ Zabbix Server trên sơ đồ kiến trúc được thiết lập vận hành theo 4 giai đoạn kỹ thuật:
+\begin{enumerate}
+    \item \textbf{Giai đoạn Kích hoạt SNMP Daemon:} Trên các thiết bị hạ tầng mạng (pfSense Firewall, pfSense Gateways và Cisco Core Switch), dịch vụ SNMP Daemon được kích hoạt trên cổng UDP \texttt{161} với chuỗi xác thực Community (\texttt{public}).
+    \item \textbf{Giai đoạn Thu thập Dữ liệu (SNMP Polling):} \textit{Zabbix Server} thực hiện truy vấn không tác tử (Agentless) theo chu kỳ quét siêu nhanh (\textit{Update Interval = 5s}) để thu thập các thông số băng thông (\texttt{ifInOctets}, \texttt{ifOutOctets}), trạng thái kết nối cổng (\texttt{operStatus}) và phản hồi ICMP Ping.
+    \item \textbf{Giai đoạn Khớp Quy tắc Sự cố (Trigger Matching):} Bộ máy \textit{Zabbix Engine} đối chiếu dữ liệu thu thập với các biểu thức quy tắc (Triggers) trong Template. Khi phát hiện sự cố (ví dụ: \texttt{operStatus = 2} - đứt gãy liên kết \texttt{Link Down}), trạng thái lập tức chuyển sang \texttt{PROBLEM}.
+    \item \textbf{Giai đoạn Cảnh báo Siêu tốc qua Telegram Webhook \& Đồng bộ Grafana:} \textit{Zabbix Action} phát tín hiệu cảnh báo màu sắc đỏ \texttt{[PROBLEM]} / xanh \texttt{[RESOLVED]} trực tiếp về nhóm Telegram của quản trị viên qua Telegram Webhook chỉ trong vòng 5--10 giây. Đồng thời, Grafana kết nối tới Zabbix API (cổng \texttt{8080}) qua plugin \texttt{alexanderzobnin-zabbix-app} để đồng bộ băng thông lên Bảng điều khiển tập trung.
+\end{enumerate}
+
 \section{CHƯƠNG 3: QUY TRÌNH TRIỂN KHAI THỰC TẾ}
 
 Chương này trình bày toàn bộ quy trình xây dựng và triển khai thực tế của hệ thống giám sát tập trung. Nội dung tập trung vào kiến trúc đóng gói vi dịch vụ trên nền Container (Docker), cấu hình tác tử thu thập dữ liệu (Node Exporter, Wazuh Agent), thiết lập giao thức không tác tử (SNMPv2) cho hạ tầng mạng, cũng như quy hoạch Bảng điều khiển (Dashboard) và tự động hóa cảnh báo đa kênh.
@@ -393,8 +419,14 @@ Sau khi hội tụ 3 nguồn dữ liệu chính, Grafana cung cấp giao diện 
 \end{itemize}
 
 \subsection{3.6 Cấu hình Quy tắc và Luồng Cảnh báo An ninh trên Wazuh SIEM}
-Quy trình phát hiện và cảnh báo an ninh trên Wazuh SIEM được thiết lập dựa trên các quy tắc phân tích nhật ký (Security Rules) và cơ chế chuyển tiếp sự kiện (Alert Forwarding).
-Các sự kiện bảo mật có độ nghiêm trọng cao (Level $\ge 7$ hoặc các cảnh báo SSH Brute-force, Privilege Escalation) sẽ tự động sinh cảnh báo và kích hoạt luồng chuyển tiếp dữ liệu sang hệ thống Grafana Alerting cũng như Telegram Bot. Quá trình này loại bỏ nhu cầu can thiệp thủ công và giúp đội ngũ SOC phản ứng kịp thời trước các nguy cơ an ninh mạng.
+Quy trình phát hiện, phân tích và cảnh báo sự cố an ninh trên phân hệ Wazuh SIEM được thiết lập chuẩn hóa theo luồng kỹ thuật 4 giai đoạn khép kín:
+
+\begin{enumerate}
+    \item \textbf{Giai đoạn Thu thập Log (Collect):} Tác tử \textit{Wazuh Agent} thu thập nhật ký hệ thống (Syslog, Auth log) từ các máy chủ mục tiêu và đẩy dữ liệu thô về \textit{Wazuh Manager} qua cổng giao tiếp mã hóa \texttt{1514}.
+    \item \textbf{Giai đoạn Giải mã và Đối soát Quy tắc (Decode \& Ruleset Matching):} \textit{Wazuh Manager} sử dụng bộ giải mã (Decoders) bóc tách các trường dữ liệu (\texttt{srcip}, \texttt{dstuser}) và kiểm tra đối chiếu với danh sách IP an toàn (CDB List \texttt{trusted\_ips}). Hệ thống thiết lập bộ quy tắc tùy biến (\textit{Custom Rules 100001--100004}); trong đó, \textbf{Rule 100004} tự động định danh hành vi tấn công \textbf{SSH Brute-force (MITRE ATT\&CK T1110)} với mức độ rủi ro nghiêm trọng \texttt{Level 12} khi phát hiện 8 nỗ lực đăng nhập thất bại trong vòng 120 giây.
+    \item \textbf{Giai đoạn Đánh chỉ mục và Lưu trữ (Indexing):} Dịch vụ \textit{Filebeat} nhận cảnh báo định dạng JSON từ Manager, chuyển tiếp gói dữ liệu sang cơ sở dữ liệu \textit{Wazuh Indexer (OpenSearch)} để lưu trữ và đánh chỉ mục tập trung tại cổng REST API \texttt{9200} (\texttt{wazuh-alerts-*}).
+    \item \textbf{Giai đoạn Trực quan hóa và Cảnh báo Phản ứng nhanh (Grafana \& Deep Link):} Grafana kết nối tới Indexer thông qua plugin \texttt{grafana-opensearch-datasource}. Khi sự kiện an ninh vượt ngưỡng (\texttt{Level $\ge 7$}), Grafana Alerting tự động gửi tin nhắn báo động về nhóm Telegram của quản trị viên, đồng thời tích hợp liên kết sâu (\textit{Deep Link}) cho phép mở trực tiếp bộ lọc IP kẻ tấn công trên giao diện Wazuh OpenSearch Dashboards để phục vụ điều tra sự cố tức thời.
+\end{enumerate}
 
 \subsection{3.7 Triển khai Zabbix và Giám sát Hạ tầng Mạng (EVE-NG Lab)}
 Để hoàn thiện mô hình giám sát toàn diện cho cả thiết bị hạ tầng mạng, hệ thống tích hợp Zabbix Server thông qua giao thức SNMPv2 không tác tử (Agentless):
