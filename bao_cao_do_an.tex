@@ -1,4 +1,4 @@
-\documentclass[13pt,a4paper,openany]{extreport}
+\documentclass[13pt,a4paper]{extarticle}
 \usepackage[utf8]{inputenc}
 \usepackage[T5]{fontenc}
 \usepackage[vietnamese]{babel}
@@ -22,35 +22,36 @@
 \geometry{a4paper, left=3.5cm, right=2cm, top=2.5cm, bottom=2.5cm}
 \usepackage{fancyhdr}
 \usepackage{titlesec} % Tùy chỉnh cỡ chữ tên chương/mục
+\setcounter{secnumdepth}{0} % Tắt tự động thêm số đè của LaTeX để tránh trùng lặp "1.1 1.1" và "2 CHƯƠNG 2"
 
-% --- Định dạng tên Chương: 14pt, in đậm, dạng "1. Tên chương" ---
-\titleformat{\chapter}[hang]
+% --- Định dạng Section (Chương): 14pt, in đậm ---
+\titleformat{\section}[hang]
   {\normalfont\fontsize{14}{17}\bfseries}
-  {\thechapter.}{0.5em}{}
-\titlespacing*{\chapter}{0pt}{20pt}{15pt}
+  {}{0em}{}
+\titlespacing*{\section}{0pt}{20pt}{12pt}
 
-% --- Định dạng Section: 13pt, in đậm ---
-\titleformat{\section}
-  {\normalfont\fontsize{13}{16}\bfseries}
-  {\thesection}{1em}{}
-\titlespacing*{\section}{0pt}{12pt}{6pt}
-
-% --- Định dạng Subsection: 13pt, in đậm, in nghiêng ---
+% --- Định dạng Subsection (Mục lớn): 13pt, in đậm ---
 \titleformat{\subsection}
+  {\normalfont\fontsize{13}{16}\bfseries}
+  {}{0em}{}
+\titlespacing*{\subsection}{0pt}{12pt}{6pt}
+
+% --- Định dạng Subsubsection (Mục nhỏ): 13pt, in đậm, in nghiêng ---
+\titleformat{\subsubsection}
   {\normalfont\fontsize{13}{16}\bfseries\itshape}
-  {\thesubsection}{1em}{}
-\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+  {}{0em}{}
+\titlespacing*{\subsubsection}{0pt}{10pt}{4pt}
 
 % Cài đặt Header & Footer theo chuẩn:
 % Tên đề tài bên phải Header, Số trang bên phải Footer
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[R]{Triển khai Hệ thống Giám sát và Cảnh báo Thông tin Tập trung}
+\fancyhead[R]{Triển khai HT Giám sát \& Cảnh báo Tập trung (Grafana, Prometheus, Zabbix, Wazuh)}
 \fancyfoot[R]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 \fancypagestyle{plain}{
   \fancyhf{}
-  \fancyhead[R]{Triển khai Hệ thống Giám sát và Cảnh báo Thông tin Tập trung}
+  \fancyhead[R]{Triển khai HT Giám sát \& Cảnh báo Tập trung (Grafana, Prometheus, Zabbix, Wazuh)}
   \fancyfoot[R]{\thepage}
   \renewcommand{\headrulewidth}{0.4pt}
 }
@@ -82,15 +83,75 @@
 
 \begin{document}
 
+% --- TRANG BÌA NGOÀI ---
+\begin{titlepage}
+    \centering
+    {\Large \textbf{TRƯỜNG ĐẠI HỌC XÂY DỰNG}} \\
+    {\Large \textbf{KHOA CÔNG NGHỆ THÔNG TIN}} \\
+    -------------------o0o------------------- \\
+    \vspace{1.5cm}
+    
+    % Chèn logo trường
+    \begin{center}
+        \includegraphics[width=3cm]{images/LOGO_DHXY.jpg}
+    \end{center}
+    \vspace{1.5cm}
+    
+    \textbf{\Large CHUYÊN ĐỀ TỔNG HỢP} \\
+    \vspace{0.3cm}
+    NGÀNH: CÔNG NGHỆ THÔNG TIN \\
+    \vspace{1.5cm}
+    
+    \textbf{\LARGE TRIỂN KHAI HỆ THỐNG GIÁM SÁT VÀ CẢNH BÁO THÔNG TIN TẬP TRUNG VỚI GRAFANA, PROMETHEUS, ZABBIX VÀ WAZUH SIEM} \\
+    \vspace{2cm}
+    
+    \textbf{\large NGUYỄN NGỌC ĐỨC} \\
+    
+    \vfill
+    \textbf{HÀ NỘI – 2026}
+\end{titlepage}
+
+% --- TRANG BÌA PHỤ ---
+\begin{titlepage}
+    \centering
+    {\Large \textbf{TRƯỜNG ĐẠI HỌC XÂY DỰNG}} \\
+    {\Large \textbf{KHOA CÔNG NGHỆ THÔNG TIN}} \\
+    -------------------o0o------------------- \\
+    \vspace{1.5cm}
+    
+    % Chèn logo trường
+    \begin{center}
+        \includegraphics[width=3cm]{images/LOGO_DHXY.jpg}
+    \end{center}
+    \vspace{1.5cm}
+    
+    \textbf{\Large CHUYÊN ĐỀ TỔNG HỢP} \\
+    \vspace{0.3cm}
+    NGÀNH: CÔNG NGHỆ THÔNG TIN \\
+    \vspace{1.5cm}
+    
+    \textbf{\LARGE TRIỂN KHAI HỆ THỐNG GIÁM SÁT VÀ CẢNH BÁO THÔNG TIN TẬP TRUNG VỚI GRAFANA, PROMETHEUS, ZABBIX VÀ WAZUH SIEM} \\
+    \vspace{2cm}
+    
+    \textbf{\large NGUYỄN NGỌC ĐỨC } \\
+    \vspace{0.5cm}
+    \textbf{\large GIÁO VIÊN HƯỚNG DẪN : ThS. NGUYỄN VIỆT NHẬT} \\
+    
+    \vfill
+    \textbf{HÀ NỘI – 2026}
+\end{titlepage}
 
 
-\chapter*{LỜI CAM ĐOAN}
+
+\section*{LỜI CAM ĐOAN}
+\addcontentsline{toc}{section}{LỜI CAM ĐOAN}
 % Sinh viên điền nội dung lời cam đoan vào đây
 Tôi xin cam đoan các kết quả trình bày trong báo cáo đồ án này dựa trên quá trình nghiên cứu và thực nghiệm của riêng tôi, không sao chép bất kỳ kết quả nghiên cứu nào của các tác giả khác.
 Nội dung của đồ án có tham khảo, sử dụng một số tài liệu, thông tin từ các nguồn tài liệu khoa học, trang web chuyên ngành và các nghiên cứu đã công bố; tất cả đều đã được trích dẫn và liệt kê đầy đủ trong danh mục tài liệu tham khảo.
 
 
-\chapter*{LỜI CẢM ƠN}
+\section*{LỜI CẢM ƠN}
+\addcontentsline{toc}{section}{LỜI CẢM ƠN}
 
 Lời đầu tiên, tôi xin bày tỏ lòng biết ơn sâu sắc tới thầy \textbf{Nguyễn Việt Nhật} --- giảng viên hướng dẫn trực tiếp của tôi. Trong suốt quá trình thực hiện đồ án, thầy đã tận tình định hướng về mặt kỹ thuật, chỉ ra những điểm còn hạn chế và truyền đạt những kinh nghiệm thực tế vô cùng quý giá. Sự hỗ trợ và động viên của thầy là nguồn động lực lớn nhất giúp tôi hoàn thành đề tài này.
 
@@ -108,93 +169,101 @@ Do kiến thức và kinh nghiệm thực tế còn có những giới hạn nh�
 \end{flushright}
 
 \tableofcontents
-
-\listoffigures
-\addcontentsline{toc}{chapter}{Danh mục hình vẽ}
+\addcontentsline{toc}{section}{MỤC LỤC}
 \newpage
 
-\chapter{MỞ ĐẦU}
+\listoffigures
+\addcontentsline{toc}{section}{DANH MỤC HÌNH VẼ}
+\newpage
 
-\section{Lý do chọn đề tài}
+\section{CHƯƠNG 1: MỞ ĐẦU}
+
+\subsection{1.1 Lý do chọn đề tài}
 Trong vận hành hệ thống Enterprise truyền thống, người quản trị thường đối mặt với rủi ro "bội thực công cụ" (Tool Fatigue). Khi sự cố xảy ra, họ phải truy cập hàng loạt các bảng điều khiển tách biệt: xem số liệu phần cứng (CPU, RAM) trên Prometheus, kiểm tra log an ninh trên Wazuh/Elasticsearch, hay xem lưu lượng mạng trên Zabbix. Sự phân mảnh này dẫn đến việc xử lý sự cố chậm trễ.
 
 Bên cạnh đó, các công cụ cảnh báo truyền thống thường hoạt động thụ động, thiếu ngữ cảnh và dễ gây ra tình trạng "Spam cảnh báo" khiến người quản trị bỏ lỡ các sự cố nghiêm trọng thực sự.
 
-Do đó, đồ án này đề xuất và triển khai một mô hình hệ thống giám sát thế hệ mới: \textbf{Mô hình Trung tâm Điều hành Hợp nhất (Single Pane of Glass)} kết hợp quy trình tối ưu hóa cảnh báo qua Telegram.
+Do đó, đồ án này đề xuất và triển khai một mô hình hệ thống giám sát thế hệ mới: \textbf{Mô hình Trung tâm Điều hành Hợp nhất} kết hợp quy trình tối ưu hóa cảnh báo qua Telegram.
 
-\section{Mục tiêu nghiên cứu}
+\subsection{1.2 Mục tiêu nghiên cứu}
 \begin{itemize}
-    \item Phân tách và kết hợp hoàn hảo hai luồng dữ liệu độc lập: \textbf{Metrics} (số liệu phần cứng) và \textbf{Logs} (sự kiện bảo mật).
-    \item Triển khai \textbf{Grafana} làm trung tâm hội tụ đa nguồn (Multi-Datasource).
-    \item Triển khai và tích hợp hệ thống \textbf{Wazuh} để phát hiện mã độc và tấn công.
-    \item Thiết lập kênh phản ứng nhanh thông qua \textbf{Telegram Bot}.
+    \item Phân tách và kết hợp hoàn hảo ba luồng dữ liệu độc lập: \textbf{Metrics} (số liệu phần cứng), \textbf{Logs} (sự kiện bảo mật) và \textbf{Network Traffic} (lưu lượng mạng qua Zabbix SNMP).
+    \item Triển khai \textbf{Grafana} làm trung tâm hội tụ đa nguồn (Multi-Datasource: Prometheus, OpenSearch, Zabbix).
+    \item Triển khai và tích hợp hệ thống \textbf{Wazuh SIEM} để phát hiện mã độc và các đe dọa an toàn thông tin.
+    \item Triển khai hạ tầng giám sát thiết bị mạng chuyên dụng \textbf{Zabbix} cho các thiết bị mạng cốt lõi (Firewall pfSense, Gateways pfSense, Core Switch Cisco) trong môi trường Lab EVE-NG.
+    \item Thiết lập kênh phản ứng nhanh thông qua \textbf{Telegram Bot API} và Zabbix Telegram Webhook.
     \item Đặt nền móng cho kiến trúc tự động hóa vận hành kết hợp trí tuệ nhân tạo (AIOps).
 \end{itemize}
 
-\chapter{CƠ SỞ LÝ THUYẾT VÀ KIẾN TRÚC HỆ THỐNG}
+\section{CHƯƠNG 2: CƠ SỞ LÝ THUYẾT VÀ KIẾN TRÚC HỆ THỐNG}
 
-\section{Tổng quan về các nền tảng lõi}
-Để xây dựng một hệ thống giám sát toàn diện, đồ án kết hợp sức mạnh của 5 thành phần mã nguồn mở cốt lõi trong lĩnh vực quản trị hệ thống:
+Chương này trình bày cơ sở lý thuyết tổng quan về 6 nền tảng mã nguồn mở cốt lõi được ứng dụng trong đề tài, phân tích chuyên sâu cơ chế phân tách 3 luồng dữ liệu đặc thù (Metrics, Security Logs và Network Traffic), so sánh các giải pháp cảnh báo, đồng thời mô tả chi tiết sơ đồ kiến trúc và luồng dữ liệu (Data Flow) giữa 5 khối chức năng của hệ thống.
+
+\subsection{2.1 Tổng quan về các nền tảng lõi}
+Để xây dựng một hệ thống giám sát toàn diện, đồ án kết hợp sức mạnh của 6 thành phần mã nguồn mở cốt lõi trong lĩnh vực quản trị hệ thống:
 \begin{itemize}
     \item \textbf{Prometheus:} Nền tảng giám sát hệ thống dựa trên cơ sở dữ liệu chuỗi thời gian (Time-Series Database - TSDB). Khác với các cơ sở dữ liệu quan hệ truyền thống, Prometheus được thiết kế chuyên biệt để ghi nhận khối lượng lớn các điểm dữ liệu đo lường (metrics) ở tốc độ cao, thông qua cơ chế chủ động truy vấn (Pull Mechanism).
     \item \textbf{Node Exporter:} Đóng vai trò là tác tử (Agent) đo lường phần cứng. Chức năng chính của Node Exporter là trích xuất các thông số từ lõi hệ điều hành (CPU, RAM, Disk, Network), sau đó "phiên dịch" (export) chúng sang định dạng tiêu chuẩn (Prometheus exposition format) và phơi bày qua giao thức HTTP để máy chủ Prometheus thu thập.
     \item \textbf{Wazuh SIEM:} Hệ thống quản lý thông tin và sự kiện an toàn bảo mật. Wazuh hoạt động theo mô hình Client-Server, thu thập nhật ký hệ thống (Logs) từ Agent, đối soát liên tục với bộ quy tắc (Ruleset) chuẩn MITRE ATT\&CK nhằm phát hiện và định danh các hành vi tấn công mạng.
     \item \textbf{OpenSearch (Wazuh Indexer):} Công cụ phân tích và tìm kiếm dữ liệu phân tán (được phát triển từ Elasticsearch). Trong đồ án này, OpenSearch đóng vai trò là cơ sở dữ liệu cốt lõi của Wazuh, chuyên xử lý và đánh chỉ mục (Indexing) các cảnh báo an ninh, hỗ trợ truy vấn tìm kiếm toàn văn bản (Full-text search) với hiệu năng cao.
-    \item \textbf{Grafana:} Nền tảng trực quan hóa dữ liệu, đóng vai trò "Màn hình điều khiển hợp nhất" (Single Pane of Glass). Grafana không trực tiếp lưu trữ dữ liệu; thay vào đó, hệ thống thực hiện các truy vấn đồng thời tới nhiều nguồn dữ liệu (Prometheus, OpenSearch) nhằm tổng hợp biểu đồ và thiết lập cơ sở kích hoạt cảnh báo.
+    \item \textbf{Zabbix \& SNMP Monitoring:} Nền tảng giám sát hạ tầng mạng chuyên dụng theo cơ chế không agent (SNMPv2). Zabbix đóng vai trò thu thập thông số lưu lượng băng thông (Interface Traffic), trạng thái kết nối (Link Down/Up), CPU/RAM từ các thiết bị mạng cốt lõi (pfSense Firewall, pfSense Gateways, Core Switch Cisco) trong môi trường Lab EVE-NG.
+    \item \textbf{Grafana:} Nền tảng trực quan hóa dữ liệu, đóng vai trò "Màn hình điều khiển hợp nhất". Grafana không trực tiếp lưu trữ dữ liệu; thay vào đó, hệ thống thực hiện các truy vấn đồng thời tới nhiều nguồn dữ liệu (Prometheus, OpenSearch, Zabbix) nhằm tổng hợp biểu đồ và thiết lập cơ sở kích hoạt cảnh báo.
 \end{itemize}
 
-\section{Phân tách luồng dữ liệu: Metrics và Security Logs}
-Một kiến trúc giám sát tiêu chuẩn Enterprise yêu cầu sự tách biệt rõ ràng giữa hai luồng dữ liệu đặc thù:
+\subsection{2.2 Phân tách luồng dữ liệu: Metrics, Security Logs và Network Traffic}
+Một kiến trúc giám sát tiêu chuẩn Enterprise yêu cầu sự tách biệt rõ ràng giữa ba luồng dữ liệu đặc thù:
 
 \begin{table}[H]
     \centering
-    \begin{tabularx}{\textwidth}{|X|X|X|}
+    \begin{tabularx}{\textwidth}{|X|X|X|X|}
         \hline
-        \textbf{Tiêu chí} & \textbf{Luồng Metrics (Prometheus)} & \textbf{Luồng Logs \& Events (Wazuh / OpenSearch)} \\ \hline
-        \textbf{Bản chất} & Dữ liệu định lượng (Numbers) biến thiên theo thời gian. & Chuỗi văn bản chi tiết (Text \& Strings) lưu vết sự kiện. \\ \hline
-        \textbf{Ví dụ} & \texttt{RAM = 80\%}, \texttt{CPU = 90\%} & \texttt{"Invalid user hieunn from 192.168.68.181 port 36958"} \\ \hline
-        \textbf{Lưu trữ} & Prometheus TSDB (Cấu trúc block tối ưu nén dữ liệu). & Wazuh Indexer (Tối ưu đánh chỉ mục và tìm kiếm văn bản). \\ \hline
+        \textbf{Tiêu chí} & \textbf{Luồng Metrics (Prometheus)} & \textbf{Luồng Logs \& Events (Wazuh / OpenSearch)} & \textbf{Luồng Network Traffic (Zabbix SNMP)} \\ \hline
+        \textbf{Bản chất} & Dữ liệu định lượng (Numbers) biến thiên theo thời gian. & Chuỗi văn bản chi tiết (Text \& Strings) lưu vết sự kiện. & Thông số băng thông (bps/pps) và trạng thái kết nối (Link Up/Down). \\ \hline
+        \textbf{Ví dụ} & \texttt{RAM = 80\%}, \texttt{CPU = 90\%} & \texttt{"Invalid user hieunn from 192.168.68.181..."} & \texttt{ifInOctets = 100Mbps}, \texttt{Link Down (Operational status = 2)} \\ \hline
+        \textbf{Lưu trữ} & Prometheus TSDB (Tối ưu nén dữ liệu chuỗi thời gian). & Wazuh Indexer (Tối ưu đánh chỉ mục và tìm kiếm văn bản). & Zabbix MySQL Database (Lưu vết dữ liệu giám sát mạng). \\ \hline
     \end{tabularx}
 \end{table}
 
-\textbf{Điểm nhấn lý thuyết:} Cơ sở dữ liệu của Prometheus được thiết kế chuyên biệt cho kiểu dữ liệu số (Float/Integer). Việc lưu trữ dữ liệu an toàn thông tin (chứa IP, Username, chuỗi lệnh) bắt buộc phải được đảm nhiệm bởi một kho dữ liệu tài liệu (Document-oriented Database) như \textbf{Wazuh Indexer}, nhằm bảo toàn nguyên vẹn ngữ cảnh của sự kiện.
+\textbf{Điểm nhấn lý thuyết:} Cơ sở dữ liệu của Prometheus được thiết kế chuyên biệt cho kiểu dữ liệu số (Float/Integer) của Server. Việc lưu trữ dữ liệu an toàn thông tin (chứa IP, Username, chuỗi lệnh) được đảm nhiệm bởi \textbf{Wazuh Indexer}, trong khi các thông số băng thông và trạng thái thiết bị mạng (pfSense, Cisco Core Switch) được thu thập Agentless qua giao thức SNMPv2 và quản lý tập trung bởi \textbf{Zabbix}.
 
-\section{So sánh Prometheus AlertManager và Grafana Alerting}
+\subsection{2.3 So sánh Prometheus AlertManager và Grafana Alerting}
 Mặc dù hệ sinh thái Prometheus cung cấp sẵn AlertManager, đồ án lựa chọn \textbf{Grafana Alerting} làm cơ chế báo động trung tâm dựa trên các ưu điểm sau:
 \begin{enumerate}
-    \item \textbf{Khả năng Đa nguồn (Multi-Datasource):} AlertManager bị giới hạn trong phạm vi dữ liệu của Prometheus. Ngược lại, Grafana hỗ trợ truy xuất và tổng hợp cảnh báo từ đa dạng nguồn dữ liệu, bao gồm cả nhật ký an ninh từ Wazuh.
+    \item \textbf{Khả năng Đa nguồn (Multi-Datasource):} AlertManager bị giới hạn trong phạm vi dữ liệu của Prometheus. Ngược lại, Grafana hỗ trợ truy xuất và tổng hợp cảnh báo từ đa dạng nguồn dữ liệu, bao gồm cả nhật ký an ninh từ Wazuh và số liệu hạ tầng mạng từ Zabbix.
     \item \textbf{Khuôn mẫu tin nhắn (Message Templates):} Grafana cung cấp công cụ tùy biến nội dung thông báo thông qua ngôn ngữ đánh dấu HTML/Go Template, tối ưu hóa giao diện hiển thị trên Telegram.
     \item \textbf{Phép toán kết hợp:} Cho phép kết hợp và tính toán biểu thức (Expressions) từ nhiều nguồn dữ liệu khác nhau trước khi ra quyết định kích hoạt cảnh báo.
 \end{enumerate}
 
-\section{Sơ đồ Kiến trúc và Phân tích Luồng Dữ liệu (Data Flow)}
-Kiến trúc hệ thống được phân chia thành 4 khối chức năng, hoạt động theo luồng dữ liệu như sau:
+\subsection{2.4 Sơ đồ Kiến trúc và Phân tích Luồng Dữ liệu (Data Flow)}
+Kiến trúc hệ thống được phân chia thành 5 khối chức năng, hoạt động theo luồng dữ liệu như sau:
 
 \begin{enumerate}
     \item \textbf{Khối Client (Máy chủ mục tiêu):} Nơi triển khai các tác tử thu thập dữ liệu bao gồm Node Exporter (giám sát tài nguyên phần cứng) và Wazuh Agent (giám sát an toàn thông tin).
-    \item \textbf{Khối Wazuh SIEM (Xử lý Log):}
+    \item \textbf{Khối Thiết bị Mạng (EVE-NG Lab):} Bao gồm pfSense Firewall (\texttt{192.168.68.176}), pfSense Gateway 1 (\texttt{192.168.68.173}), pfSense Gateway 2 (\texttt{192.168.68.182}) và Core Switch Cisco (\texttt{192.168.68.180}) cung cấp dữ liệu qua dịch vụ SNMP Daemon (UDP 161).
+    \item \textbf{Khối Wazuh SIEM \& Zabbix Server (Xử lý dữ liệu chuyên dụng):}
     \begin{itemize}
-        \item \textit{Wazuh Agent} phát hiện các sự kiện hệ thống và đẩy (Push) dữ liệu thô về \textit{Wazuh Manager}.
-        \item \textit{Wazuh Manager} đóng vai trò xử lý trung tâm, giải mã log, đối chiếu quy tắc bảo mật và gán nhãn Rule ID cùng mức độ rủi ro (Level).
-        \item Dữ liệu sự kiện sau đó được dịch vụ Filebeat chuyển tiếp tới \textit{Wazuh Indexer (OpenSearch)} để lưu trữ và đánh chỉ mục.
+        \item \textit{Wazuh Agent} đẩy dữ liệu log về \textit{Wazuh Manager} giải mã, đối chiếu quy tắc bảo mật và nạp vào \textit{Wazuh Indexer (OpenSearch)}.
+        \item \textit{Zabbix Server} thực hiện truy vấn SNMPv2 không agent để thu thập băng thông, trạng thái link và phát cảnh báo Telegram Webhook tức thời (5-10s).
     \end{itemize}
     \item \textbf{Khối Master (Giám sát trung tâm):}
     \begin{itemize}
         \item \textit{Prometheus} duy trì chu kỳ định kỳ (Pull) để truy xuất dữ liệu phần cứng từ các Node Exporter.
-        \item \textit{Grafana} hoạt động như giao diện trung tâm, sử dụng PromQL để truy vấn dữ liệu từ Prometheus và giao thức REST API (cổng 9200) để truy vấn nhật ký an ninh từ Wazuh Indexer.
+        \item \textit{Grafana} hoạt động như giao diện trung tâm, hội tụ cả 3 nguồn dữ liệu: Prometheus (PromQL), OpenSearch (REST API cổng 9200) và Zabbix (Zabbix API cổng 8080).
     \end{itemize}
-    \item \textbf{Khối Cảnh báo (Alerting):} Grafana đánh giá các biểu thức giám sát; khi dữ liệu vượt ngưỡng (Threshold), hệ thống sẽ gửi yêu cầu POST (HTTPS) tới Telegram Bot API để phát đi thông báo.
+    \item \textbf{Khối Cảnh báo (Alerting):} Grafana và Zabbix đánh giá các biểu thức giám sát; khi phát hiện sự cố, hệ thống sẽ tự động phát tín hiệu báo động về nhóm Telegram của người quản trị.
 \end{enumerate}
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\textwidth]{images/image-3.png}
+    \includegraphics[width=0.85\textwidth]{images/architec.png}
     \caption{Sơ đồ luồng dữ liệu và cảnh báo hệ thống}
 \end{figure}
 
-\chapter{QUY TRÌNH TRIỂN KHAI THỰC TẾ}
+\section{CHƯƠNG 3: QUY TRÌNH TRIỂN KHAI THỰC TẾ}
 
-\section{Triển khai Nền tảng Giám sát Cơ sở (Prometheus, Grafana \& Node Exporter)}
+Chương này chi tiết hóa toàn bộ quy trình xây dựng và triển khai thực tế của hệ thống giám sát tập trung, từ việc đóng gói cụm vi dịch vụ Prometheus, Grafana, Zabbix trên Docker, cấu hình tác tử Node Exporter và Wazuh Agent trên các máy chủ mục tiêu, cấu hình SNMP trên hệ thống thiết bị mạng pfSense và Cisco Core Switch, cho đến việc khởi tạo Dashboards và tự động hóa cảnh báo qua Telegram Webhook.
+
+\subsection{3.1 Triển khai Nền tảng Giám sát Cơ sở (Prometheus, Grafana \& Node Exporter)}
 Để đảm bảo tính linh hoạt và dễ dàng cô lập môi trường, hệ thống giám sát trung tâm được triển khai hoàn toàn trên nền tảng Container (Docker). Dưới đây là các bước cấu hình chi tiết để khởi chạy:
 
 \textbf{Bước 1: Cấu hình hệ thống Prometheus và Grafana trên máy chủ Master}
@@ -340,7 +409,7 @@ Sau khi luồng cấu hình hoàn tất, hệ thống sẽ tự động phân t�
     \caption{Minh họa cảnh báo sự cố trả về nhóm Telegram thành công}
 \end{figure}
 
-\section{Tích hợp và Cấu hình Mạng Wazuh Indexer}
+\subsection{3.2 Tích hợp và Cấu hình Mạng Wazuh Indexer}
 Theo thiết kế mặc định vì lý do bảo mật, Wazuh Indexer chỉ chấp nhận kết nối cục bộ (Loopback \texttt{127.0.0.1}). Để Grafana có thể truy xuất dữ liệu từ bên ngoài, cấu hình mạng cần được can thiệp sâu:
 \begin{enumerate}
     \item \textbf{Chỉnh sửa cấu hình lõi:} Mở tệp \texttt{/etc/wazuh-indexer/opensearch.yml} và thay đổi tham số bind IP \texttt{network.host} thành \texttt{0.0.0.0}. Lệnh can thiệp:
@@ -353,7 +422,7 @@ sudo /usr/share/wazuh-indexer/bin/indexer-security-init.sh
 \end{lstlisting}
 \end{enumerate}
 
-\section{Cài đặt Cảm biến An ninh (Wazuh Agent)}
+\subsection{3.3 Cài đặt Cảm biến An ninh (Wazuh Agent)}
 Cảm biến an ninh được triển khai đồng loạt trên các máy chủ mục tiêu thông qua gói cài đặt \texttt{.deb}.
 \begin{itemize}
     \item Trong quá trình cài đặt, biến môi trường \texttt{WAZUH\_MANAGER} được khai báo trỏ trực tiếp về địa chỉ IP của máy chủ xử lý trung tâm (Wazuh Server). Lệnh cài đặt tự động hóa:
@@ -367,7 +436,7 @@ sudo /var/ossec/bin/agent_control -l
 \end{lstlisting}
 \end{itemize}
 
-\section{Cấu hình Nguồn Dữ liệu (Data Source) trên Grafana}
+\subsection{3.4 Cấu hình Nguồn Dữ liệu (Data Source) trên Grafana}
 Để Grafana có thể đọc hiểu định dạng của Wazuh Indexer (OpenSearch), cần thực hiện hai bước tích hợp:
 \begin{itemize}
     \item \textbf{Cài đặt Plugin:} Triển khai gói mở rộng \texttt{grafana-opensearch-datasource} trực tiếp vào vùng chứa (Container) của Grafana thông qua công cụ \texttt{grafana-cli}:
@@ -377,14 +446,14 @@ sudo docker exec grafana grafana cli plugins install grafana-opensearch-datasour
     \item \textbf{Thiết lập kết nối:} Khai báo Endpoint API tới cổng \texttt{9200}. Chế độ định tuyến được thiết lập là \textbf{Proxy} nhằm tránh lỗi chính sách nguồn gốc chéo (CORS). Thông số xác thực sử dụng tài khoản \texttt{admin} nội bộ, kèm theo thiết lập bỏ qua kiểm duyệt chứng thư số tự ký (TLS Skip Verify). Dữ liệu được trỏ đích xác vào Index Pattern \texttt{wazuh-alerts-*}.
 \end{itemize}
 
-\section{Xây dựng Bảng điều khiển (Dashboards)}
+\subsection{3.5 Xây dựng Bảng điều khiển (Dashboards)}
 Sau khi hội tụ thành công các nguồn dữ liệu, các bảng điều khiển (Dashboard) được thiết kế để cung cấp bức tranh toàn cảnh về hệ thống.
 \begin{itemize}
     \item Biểu đồ Metrics phản ánh mức độ tiêu thụ tài nguyên phần cứng (CPU, RAM, Disk I/O) theo thời gian thực.
     \item Bảng Log an ninh thống kê chi tiết các sự kiện tấn công bị Wazuh ngăn chặn, phân loại theo mức độ nghiêm trọng (Level) và Rule ID.
 \end{itemize}
 
-\section{Thiết lập Cơ chế Cảnh báo (Alerting) trên hệ sinh thái Wazuh}
+\subsection{3.6 Thiết lập Cơ chế Cảnh báo (Alerting) trên hệ sinh thái Wazuh}
 Quy trình tinh chỉnh và kích hoạt các luồng cảnh báo an ninh được thao tác trực tiếp trên giao diện quản trị. Chuỗi thao tác thực tế được minh họa chi tiết dưới đây:
 
 \begin{figure}[H]
@@ -417,15 +486,76 @@ Quy trình tinh chỉnh và kích hoạt các luồng cảnh báo an ninh đư�
     \caption{Lưu cấu hình và kích hoạt thành công}
 \end{figure}
 
-\chapter{TÍCH HỢP ĐIỀU TRA SỰ CỐ}
+\subsection{3.7 Triển khai Zabbix và Giám sát Thiết bị Mạng (EVE-NG Lab)}
+
+Để hoàn thiện hệ thống giám sát tập trung cho toàn bộ hạ tầng (Server, Security, Network), hệ thống tích hợp thêm phân hệ giám sát mạng chuyên dụng \textbf{Zabbix} thông qua cơ chế không agent (SNMPv2).
+
+\textbf{1. Triển khai Zabbix Container Stack:}\\
+Zabbix Server, Zabbix Web (Nginx) và cơ sở dữ liệu MySQL được đóng gói gộp chung vào tệp \texttt{docker-compose.yml} tại máy chủ trung tâm \texttt{/opt/monitoring}:
+\begin{lstlisting}[language=yaml]
+mysql-server:
+  image: mysql:8.0
+  container_name: zabbix-mysql
+  environment:
+    - MYSQL_ROOT_PASSWORD=zabbix_root_pass
+    - MYSQL_USER=zabbix
+    - MYSQL_PASSWORD=zabbix_pass
+    - MYSQL_DATABASE=zabbix
+
+zabbix-server:
+  image: zabbix/zabbix-server-mysql:latest
+  container_name: zabbix-server
+  environment:
+    - DB_SERVER_HOST=mysql-server
+    - MYSQL_USER=zabbix
+    - MYSQL_PASSWORD=zabbix_pass
+
+zabbix-web:
+  image: zabbix/zabbix-web-nginx-mysql:latest
+  container_name: zabbix-web
+  ports:
+    - "8080:8080"
+  environment:
+    - DB_SERVER_HOST=mysql-server
+    - MYSQL_USER=zabbix
+    - MYSQL_PASSWORD=zabbix_pass
+    - ZBX_SERVER_HOST=zabbix-server
+\end{lstlisting}
+
+\textbf{2. Cấu hình SNMP trên các Thiết bị Mạng (EVE-NG Lab):}
+\begin{itemize}
+    \item \textbf{Hệ thống pfSense (Firewall \& Gateways):}
+    Đối với pfSense Firewall (\texttt{192.168.68.176}), pfSense Gateway 1 (\texttt{192.168.68.173}) và pfSense Gateway 2 (\texttt{192.168.68.182}), bật dịch vụ SNMP Daemon trên giao diện Web GUI (\texttt{Services} $\rightarrow$ \texttt{SNMP} $\rightarrow$ Community: \texttt{public}). Cấu hình luật Firewall WAN cho phép luồng giao thông UDP port 161 (SNMP) đi qua.
+    \item \textbf{Hệ thống Core Switch Cisco:}
+    Đối với Core Switch Cisco (\texttt{192.168.68.180}), cấu hình IP Out-of-band Management trên giao diện \texttt{Gi0/2} kết nối ra Cloud Net và kích hoạt SNMP Community:
+\begin{lstlisting}[language=bash]
+Switch> enable
+Switch# configure terminal
+Switch(config)# interface GigabitEthernet 0/2
+Switch(config-if)# no switchport
+Switch(config-if)# ip address 192.168.68.180 255.255.255.0
+Switch(config-if)# no shutdown
+Switch(config)# snmp-server community public RO
+Switch(config)# end
+Switch# write memory
+\end{lstlisting}
+\end{itemize}
+
+\textbf{3. Tích hợp Zabbix vào Grafana:}\\
+Cài đặt plugin \texttt{alexanderzobnin-zabbix-app} vào Grafana và cấu hình Data Source trỏ API về \texttt{http://192.168.68.181:8080/api\_jsonrpc.php} (Xác thực tài khoản \texttt{Admin}/\texttt{zabbix}).
+
+\textbf{4. Tự động hóa Cảnh báo qua Telegram Webhook:}\\
+Hệ thống sử dụng tính năng Telegram Webhook tích hợp sẵn của Zabbix (\texttt{Alerts} $\rightarrow$ \texttt{Media types} $\rightarrow$ \texttt{Telegram}) với \texttt{api\_token} và \texttt{api\_parse\_mode=html}. Gán Telegram Media cho tài khoản Admin với địa chỉ nhận là Chat ID nhóm Telegram (\texttt{-5477737347}). Tối ưu chu kỳ quét \texttt{Update interval = 5s} và điều chỉnh biểu thức Trigger sang hàm \texttt{last()} để phát hiện sự cố rớt mạng (\texttt{Link down}) và phát thông báo cảnh báo đỏ \texttt{[PROBLEM]} / xanh \texttt{[RESOLVED]} tức thì chỉ sau 5 đến 10 giây.
+
+\section{CHƯƠNG 4: TÍCH HỢP ĐIỀU TRA SỰ CỐ}
 Một trong những điểm nhấn kỹ thuật quan trọng nhất của hệ thống là khả năng liên kết sâu (Deep Linking) giữa giao diện cảnh báo (Telegram) và giao diện truy vết (Wazuh Threat Hunting), giúp thu hẹp tối đa thời gian phản ứng sự cố (MTTR - Mean Time To Respond).
 
-\section{Cơ chế trích xuất dữ liệu tự động (Data Extraction)}
+\subsection{4.1 Cơ chế trích xuất dữ liệu tự động (Data Extraction)}
 Khi Wazuh phát hiện sự cố, hệ thống không chỉ phát cảnh báo chung chung mà còn đóng gói toàn bộ ngữ cảnh tấn công (IP nguồn, tài khoản bị xâm phạm, mã lỗi) thành một tài liệu JSON. 
 
 Khi Grafana truy vấn Wazuh Indexer thông qua giao thức REST API, hệ thống Grafana Alerting sẽ tự động phân tích (parse) cấu trúc JSON này và trích xuất các giá trị quan trọng thành các Nhãn động (Dynamic Labels). Ví dụ điển hình: IP thực của kẻ tấn công sẽ được hệ thống bóc tách và gán vào biến số \verb|{{ index .Labels "data.srcip" }}|.
 
-\section{Kỹ thuật nhúng mã và Định tuyến (URL Embedding \& Routing)}
+\subsection{4.2 Kỹ thuật nhúng mã và Định tuyến (URL Embedding \& Routing)}
 Để biến tin nhắn Telegram từ một đoạn văn bản thuần túy thành một công cụ điều tra tương tác, đồ án đã tiến hành can thiệp vào cấu trúc khuôn mẫu (Message Template) của Grafana thông qua ngôn ngữ Go Template. 
 
 Cụ thể, một đường link định tuyến URL được sinh tự động và nhúng trực tiếp vào nút bấm \textbf{"CRITICAL"}. Đường link này tuân thủ cấu trúc mã hóa RISON của OpenSearch Dashboards, cho phép truyền thẳng câu lệnh truy vấn (KQL - Kuery) vào thanh tìm kiếm của trình duyệt:
@@ -435,7 +565,7 @@ https://<WAZUH_IP>/app/discover#/?_a=(query:(language:kuery,query:'data.srcip:
 "{{ index .Labels "data.srcip" }}"'))
 \end{verbatim}
 
-\section{Quy trình phản ứng sự cố thực tế (Automated Incident Response Flow)}
+\subsection{4.3 Quy trình phản ứng sự cố thực tế (Automated Incident Response Flow)}
 Nhờ sự kết hợp của hai kỹ thuật trên, luồng vận hành SOC thực tế được tối ưu hóa ở mức cao nhất:
 \begin{enumerate}
     \item Grafana phát hiện cuộc tấn công (Ví dụ: SSH Brute-force) và bắn tin nhắn cảnh báo tới nhóm điều hành trên Telegram.
@@ -445,17 +575,18 @@ Nhờ sự kết hợp của hai kỹ thuật trên, luồng vận hành SOC th�
     \item Quản trị viên ngay lập tức quan sát được toàn bộ chuỗi hành vi của tác nhân độc hại trên một màn hình duy nhất, lược bỏ hoàn toàn các bước tra cứu và trích xuất log thủ công tốn thời gian.
 \end{enumerate}
 
-\chapter{KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN}
+\section{CHƯƠNG 5: KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN}
 
-\section{Kết quả đạt được}
+\subsection{5.1 Kết quả đạt được}
 Đồ án đã triển khai thành công kiến trúc giám sát và cảnh báo an toàn thông tin tập trung, đáp ứng các tiêu chuẩn vận hành hệ thống cấp độ doanh nghiệp (Enterprise). Những đóng góp chính của đề tài bao gồm:
 \begin{itemize}
-    \item \textbf{Tối ưu hóa quy trình vận hành:} Khắc phục triệt để tình trạng phân mảnh công cụ giám sát bằng việc thiết lập thành công mô hình "Single Pane of Glass" trên nền tảng Grafana.
-    \item \textbf{Quy hoạch luồng dữ liệu thông minh:} Phân tách và xử lý hiệu quả hai luồng dữ liệu đặc thù là Metrics (qua Prometheus) và Security Logs (qua hệ sinh thái Wazuh).
-    \item \textbf{Nâng cao năng lực phản ứng sự cố (Incident Response):} Triển khai thành công kỹ thuật liên kết sâu (Deep Linking) thông qua mã hóa RISON, giúp tự động hóa quy trình truy vết tác nhân đe dọa trực tiếp từ nền tảng Telegram.
+    \item \textbf{Tối ưu hóa quy trình vận hành:} Khắc phục triệt để tình trạng phân mảnh công cụ giám sát bằng việc thiết lập thành công mô hình giám sát tập trung trên nền tảng Grafana kết hợp 3 trụ cột dữ liệu (Prometheus, Wazuh SIEM, Zabbix).
+    \item \textbf{Quy hoạch luồng dữ liệu thông minh:} Phân tách và xử lý hiệu quả 3 luồng dữ liệu đặc thù là Metrics hệ thống (Prometheus), Security Logs (Wazuh), và Network Traffic (Zabbix SNMP).
+    \item \textbf{Mở rộng năng lực giám sát hạ tầng mạng:} Tích hợp thành công Zabbix Server thu thập băng thông và trạng thái kết nối của các thiết bị mạng cốt lõi (pfSense Firewall, pfSense Gateways, Core Switch Cisco) trong môi trường Lab EVE-NG.
+    \item \textbf{Nâng cao năng lực phản ứng sự cố (Incident Response):} Triển khai thành công kỹ thuật liên kết sâu (Deep Linking) thông qua mã hóa RISON và cơ chế Webhook Telegram siêu tốc (5-10s), giúp tự động hóa quy trình truy vết tác nhân đe dọa trực tiếp từ nền tảng Telegram.
 \end{itemize}
 
-\section{Hướng phát triển mở rộng: Định hình Kiến trúc AIOps}
+\subsection{5.2 Hướng phát triển mở rộng: Định hình Kiến trúc AIOps}
 Dựa trên nền tảng dữ liệu đã hội tụ, lộ trình phát triển tiếp theo của hệ thống hướng tới mô hình Trí tuệ nhân tạo trong Vận hành CNTT (AIOps), cụ thể bao gồm các hạng mục:
 \begin{enumerate}
     \item \textbf{Ngữ cảnh hóa tự động (Automated Contextualization):} Tích hợp tính năng tự động trích xuất và đính kèm biểu đồ tài nguyên hệ thống (CPU, RAM) tại thời điểm phát sinh sự cố vào thông báo cảnh báo.
@@ -464,7 +595,7 @@ Dựa trên nền tảng dữ liệu đã hội tụ, lộ trình phát triển 
     \item \textbf{Kiến tạo hệ sinh thái Vòng lặp kín (Closed-loop System):} Hoàn thiện quy trình tự động hóa toàn trình: Nhận diện sự cố nhanh chóng (Grafana) $\rightarrow$ Phân tích ngữ cảnh thông minh (AI) $\rightarrow$ Phê duyệt và Thực thi khắc phục an toàn.
 \end{enumerate}
 
-\addcontentsline{toc}{chapter}{TÀI LIỆU THAM KHẢO}
+\addcontentsline{toc}{section}{TÀI LIỆU THAM KHẢO}
 \begin{thebibliography}{99}
     \bibitem{wazuh} \textbf{Wazuh Documentation.} (2024). \textit{Wazuh SIEM and XDR Comprehensive Documentation}. Truy cập từ: \url{https://documentation.wazuh.com/}
     \bibitem{prometheus} \textbf{Prometheus Authors.} (2024). \textit{Prometheus - Monitoring system \& time series database}. Truy cập từ: \url{https://prometheus.io/docs/}
@@ -475,3 +606,4 @@ Dựa trên nền tảng dữ liệu đã hội tụ, lộ trình phát triển 
 \end{thebibliography}
 
 \end{document}
+

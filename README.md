@@ -1,5 +1,5 @@
 
-# **Đề tài: Triển khai Hệ thống Giám sát và Cảnh báo Thông tin Tập trung với Grafana, Prometheus và Wazuh SIEM**
+# **Đề tài: Triển khai Hệ thống Giám sát và Cảnh báo Thông tin Tập trung với Grafana, Prometheus, Zabbix và Wazuh SIEM**
 
 ---
 
@@ -20,6 +20,7 @@
   - [3.4 Cấu hình Nguồn Dữ liệu (Data Source) trên Grafana](#34-cấu-hình-nguồn-dữ-liệu-data-source-trên-grafana)
   - [3.5 Xây dựng Bảng điều khiển (Dashboards)](#35-xây-dựng-bảng-điều-khiển-dashboards)
   - [3.6 Thiết lập Cơ chế Cảnh báo (Alerting) trên hệ sinh thái Wazuh](#36-thiết-lập-cơ-chế-cảnh-báo-alerting-trên-hệ-sinh-thái-wazuh)
+  - [3.7 Triển khai Zabbix và Giám sát Thiết bị Mạng (EVE-NG Lab)](#37-triển-khai-zabbix-và-giám-sát-thiết-bị-mạng-eve-ng-lab)
 - [CHƯƠNG 4: TÍCH HỢP ĐIỀU TRA SỰ CỐ](#chương-4-tích-hợp-điều-tra-sự-cố)
   - [4.1 Cơ chế trích xuất dữ liệu tự động (Data Extraction)](#41-cơ-chế-trích-xuất-dữ-liệu-tự-động-data-extraction)
   - [4.2 Kỹ thuật nhúng mã và Định tuyến (URL Embedding & Routing)](#42-kỹ-thuật-nhúng-mã-và-định-tuyến-url-embedding--routing)
@@ -36,7 +37,7 @@
 ### 1.1 Lý do chọn đề tài
 Trong vận hành hệ thống Enterprise truyền thống, người quản trị thường đối mặt với rủi ro "bội thực công cụ" (Tool Fatigue). Khi sự cố xảy ra, họ phải truy cập hàng loạt các bảng điều khiển tách biệt: xem số liệu phần cứng (CPU, RAM) trên Prometheus, kiểm tra log an ninh trên Wazuh/Elasticsearch, hay xem lưu lượng mạng trên Zabbix. Sự phân mảnh này dẫn đến việc xử lý sự cố chậm trễ.
 Bên cạnh đó, các công cụ cảnh báo truyền thống thường hoạt động thụ động, thiếu ngữ cảnh và dễ gây ra tình trạng "Spam cảnh báo" khiến người quản trị bỏ lỡ các sự cố nghiêm trọng thực sự.
-Do đó, đồ án này đề xuất và triển khai một mô hình hệ thống giám sát thế hệ mới: **Mô hình Trung tâm Điều hành Hợp nhất (Single Pane of Glass)** kết hợp quy trình tối ưu hóa cảnh báo qua Telegram.
+Do đó, đồ án này đề xuất và triển khai một mô hình hệ thống giám sát thế hệ mới: **Mô hình Trung tâm Điều hành Hợp nhất** kết hợp quy trình tối ưu hóa cảnh báo qua Telegram.
 
 ### 1.2 Mục tiêu nghiên cứu
 - Phân tách và kết hợp hoàn hảo hai luồng dữ liệu độc lập: **Metrics** (số liệu phần cứng) và **Logs** (sự kiện bảo mật).
@@ -50,12 +51,14 @@ Do đó, đồ án này đề xuất và triển khai một mô hình hệ thố
 ## CHƯƠNG 2: CƠ SỞ LÝ THUYẾT VÀ KIẾN TRÚC HỆ THỐNG
 
 ### 2.1 Tổng quan về các nền tảng lõi
-Để xây dựng một hệ thống giám sát toàn diện, đồ án kết hợp sức mạnh của 5 thành phần mã nguồn mở cốt lõi trong lĩnh vực quản trị hệ thống:
+Để xây dựng một hệ thống giám sát toàn diện, đồ án kết hợp sức mạnh của 6 thành phần mã nguồn mở cốt lõi trong lĩnh vực quản trị hệ thống:
 - **Prometheus:** Nền tảng giám sát hệ thống dựa trên cơ sở dữ liệu chuỗi thời gian (Time-Series Database - TSDB). Khác với các cơ sở dữ liệu quan hệ truyền thống, Prometheus được thiết kế chuyên biệt để ghi nhận khối lượng lớn các điểm dữ liệu đo lường (metrics) ở tốc độ cao, thông qua cơ chế chủ động truy vấn (Pull Mechanism).
 - **Node Exporter:** Đóng vai trò là tác tử (Agent) đo lường phần cứng. Chức năng chính của Node Exporter là trích xuất các thông số từ lõi hệ điều hành (CPU, RAM, Disk, Network), sau đó "phiên dịch" (export) chúng sang định dạng tiêu chuẩn (Prometheus exposition format) và phơi bày qua giao thức HTTP để máy chủ Prometheus thu thập.
 - **Wazuh SIEM:** Hệ thống quản lý thông tin và sự kiện an toàn bảo mật. Wazuh hoạt động theo mô hình Client-Server, thu thập nhật ký hệ thống (Logs) từ Agent, đối soát liên tục với bộ quy tắc (Ruleset) chuẩn MITRE ATT&CK nhằm phát hiện và định danh các hành vi tấn công mạng.
 - **OpenSearch (Wazuh Indexer):** Công cụ phân tích và tìm kiếm dữ liệu phân tán (được phát triển từ Elasticsearch). Trong đồ án này, OpenSearch đóng vai trò là cơ sở dữ liệu cốt lõi của Wazuh, chuyên xử lý và đánh chỉ mục (Indexing) các cảnh báo an ninh, hỗ trợ truy vấn tìm kiếm toàn văn bản (Full-text search) với hiệu năng cao.
-- **Grafana:** Nền tảng trực quan hóa dữ liệu, đóng vai trò "Màn hình điều khiển hợp nhất" (Single Pane of Glass). Grafana không trực tiếp lưu trữ dữ liệu; thay vào đó, hệ thống thực hiện các truy vấn đồng thời tới nhiều nguồn dữ liệu (Prometheus, OpenSearch) nhằm tổng hợp biểu đồ và thiết lập cơ sở kích hoạt cảnh báo.
+- **Zabbix & SNMP Monitoring:** Nền tảng giám sát hạ tầng mạng chuyên dụng theo cơ chế không cần tác tử (Agentless SNMP). Zabbix đóng vai trò thu thập thông số lưu lượng băng thông (Interface Traffic), trạng thái kết nối (Link Down/Up), CPU/RAM từ các thiết bị mạng cốt lõi (Firewall pfSense, Core Switch Cisco) trong môi trường Lab EVE-NG.
+- **Grafana:** Nền tảng trực quan hóa dữ liệu, đóng vai trò "Màn hình điều khiển hợp nhất". Grafana không trực tiếp lưu trữ dữ liệu; thay vào đó, hệ thống thực hiện các truy vấn đồng thời tới nhiều nguồn dữ liệu (Prometheus, OpenSearch, Zabbix) nhằm tổng hợp biểu đồ và thiết lập cơ sở kích hoạt cảnh báo.
+
 
 ### 2.2 Phân tách luồng dữ liệu: Metrics và Security Logs
 Một kiến trúc giám sát tiêu chuẩn Enterprise yêu cầu sự tách biệt rõ ràng giữa hai luồng dữ liệu đặc thù:
@@ -89,7 +92,7 @@ Kiến trúc hệ thống được phân chia thành 4 khối chức năng, ho�
    - *Grafana* hoạt động như giao diện trung tâm, sử dụng PromQL để truy vấn dữ liệu từ Prometheus và giao thức REST API (cổng 9200) để truy vấn nhật ký an ninh từ Wazuh Indexer.
 4. **Khối Cảnh báo (Alerting):** Grafana đánh giá các biểu thức giám sát; khi dữ liệu vượt ngưỡng (Threshold), hệ thống sẽ gửi yêu cầu POST (HTTPS) tới Telegram Bot API để phát đi thông báo.
 
-<img src="images/image-3.png" width="600">
+<img src="images/architec.png" width="750">
 
 ---
 
@@ -259,6 +262,68 @@ Quy trình tinh chỉnh và kích hoạt các luồng cảnh báo an ninh đư�
 
 <img src="images/image-17.png" width="600">
 
+### 3.7 Triển khai Zabbix và Giám sát Thiết bị Mạng (EVE-NG Lab)
+
+Để hoàn thiện hệ thống giám sát tập trung cho toàn bộ hạ tầng (Server, Security, Network), hệ thống tích hợp thêm phân hệ giám sát mạng chuyên dụng **Zabbix** thông qua cơ chế không agent (SNMPv2).
+
+1. **Triển khai Zabbix Container Stack:**
+   Zabbix Server, Zabbix Web (Nginx) và cơ sở dữ liệu MySQL được đóng gói gộp chung vào file `docker-compose.yml` tại máy chủ trung tâm `/opt/monitoring`:
+   ```yaml
+   mysql-server:
+     image: mysql:8.0
+     container_name: zabbix-mysql
+     environment:
+       - MYSQL_ROOT_PASSWORD=zabbix_root_pass
+       - MYSQL_USER=zabbix
+       - MYSQL_PASSWORD=zabbix_pass
+       - MYSQL_DATABASE=zabbix
+
+   zabbix-server:
+     image: zabbix/zabbix-server-mysql:latest
+     container_name: zabbix-server
+     environment:
+       - DB_SERVER_HOST=mysql-server
+       - MYSQL_USER=zabbix
+       - MYSQL_PASSWORD=zabbix_pass
+
+   zabbix-web:
+     image: zabbix/zabbix-web-nginx-mysql:latest
+     container_name: zabbix-web
+     ports:
+       - "8080:8080"
+     environment:
+       - DB_SERVER_HOST=mysql-server
+       - MYSQL_USER=zabbix
+       - MYSQL_PASSWORD=zabbix_pass
+       - ZBX_SERVER_HOST=zabbix-server
+   ```
+
+2. **Cấu hình SNMP trên các Thiết bị Mạng (EVE-NG Lab):**
+   - **Hệ thống pfSense (Firewall & Gateways):**
+     - **pfSense Firewall (`192.168.68.176`), pfSense Gateway 1 (`192.168.68.173`) & pfSense Gateway 2 (`192.168.68.182`):** Bật dịch vụ SNMP Daemon trên Web GUI (Services ➔ SNMP ➔ Community: `public`). Cấu hình Rule Firewall WAN cho phép cổng UDP 161 (SNMP) đi qua.
+   - **Hệ thống Core Switch Cisco:**
+     - **Core Switch Cisco (`192.168.68.180`):** Cấu hình IP Out-of-band Management trên cổng `Gi0/2` cắm ra Cloud Net và bật SNMP Community:
+       ```text
+       Switch> enable
+       Switch# configure terminal
+       Switch(config)# interface GigabitEthernet 0/2
+       Switch(config-if)# no switchport
+       Switch(config-if)# ip address 192.168.68.180 255.255.255.0
+       Switch(config-if)# no shutdown
+       Switch(config)# snmp-server community public RO
+       Switch(config)# end
+       Switch# write memory
+       ```
+
+
+3. **Tích hợp Zabbix vào Grafana:**
+   Cài đặt plugin `alexanderzobnin-zabbix-app` vào Grafana và cấu hình Data Source trỏ API về `http://192.168.68.181:8080/api_jsonrpc.php` (Xác thực user `Admin`/`zabbix`).
+
+4. **Tự động hóa Cảnh báo qua Telegram Webhook:**
+   - Sử dụng tính năng Telegram Webhook có sẵn của Zabbix (`Alerts` ➔ `Media types` ➔ `Telegram`).
+   - Cấu hình `api_token` và `api_parse_mode=html`.
+   - Gán Telegram Media cho tài khoản Admin với `Send to` là **Chat ID Nhóm Telegram** (`-5477737347`).
+   - Tối ưu chu kỳ quét `Update interval = 5s` và sửa biểu thức Trigger sang `last()` để phát hiện sự cố rớt mạng (`Link down`) và gửi tin nhắn cảnh báo đỏ `[PROBLEM]` / xanh `[RESOLVED]` siêu tốc chỉ sau **5 đến 10 giây**.
 
 ---
 
@@ -288,9 +353,11 @@ Nhờ sự kết hợp của hai kỹ thuật trên, luồng vận hành SOC th�
 
 ### 5.1 Kết quả đạt được
 Đồ án đã triển khai thành công kiến trúc giám sát và cảnh báo an toàn thông tin tập trung, đáp ứng các tiêu chuẩn vận hành hệ thống cấp độ doanh nghiệp (Enterprise). Những đóng góp chính của đề tài bao gồm:
-- **Tối ưu hóa quy trình vận hành:** Khắc phục triệt để tình trạng phân mảnh công cụ giám sát bằng việc thiết lập thành công mô hình "Single Pane of Glass" trên nền tảng Grafana.
-- **Quy hoạch luồng dữ liệu thông minh:** Phân tách và xử lý hiệu quả hai luồng dữ liệu đặc thù là Metrics (qua Prometheus) và Security Logs (qua hệ sinh thái Wazuh).
-- **Nâng cao năng lực phản ứng sự cố (Incident Response):** Triển khai thành công kỹ thuật liên kết sâu (Deep Linking) thông qua mã hóa RISON, giúp tự động hóa quy trình truy vết tác nhân đe dọa trực tiếp từ nền tảng Telegram.
+- **Tối ưu hóa quy trình vận hành:** Khắc phục triệt để tình trạng phân mảnh công cụ giám sát bằng việc thiết lập thành công mô hình giám sát tập trung trên nền tảng Grafana kết hợp 3 trụ cột dữ liệu (Prometheus, Wazuh SIEM, Zabbix).
+- **Quy hoạch luồng dữ liệu thông minh:** Phân tách và xử lý hiệu quả 3 luồng dữ liệu đặc thù là Metrics hệ thống (Prometheus), Security Logs (Wazuh), và Network Traffic (Zabbix SNMP).
+- **Mở rộng năng lực giám sát hạ tầng mạng:** Tích hợp thành công Zabbix Server thu thập băng thông và trạng thái kết nối của các thiết bị mạng cốt lõi (Firewall pfSense, Core Switch Cisco) trong môi trường Lab EVE-NG.
+- **Nâng cao năng lực phản ứng sự cố (Incident Response):** Triển khai thành công kỹ thuật liên kết sâu (Deep Linking) thông qua mã hóa RISON và cơ chế Webhook Telegram siêu tốc (5-10s), giúp tự động hóa quy trình truy vết tác nhân đe dọa trực tiếp từ nền tảng Telegram.
+
 
 ### 5.2 Hướng phát triển mở rộng: Định hình Kiến trúc AIOps
 Dựa trên nền tảng dữ liệu đã hội tụ, lộ trình phát triển tiếp theo của hệ thống hướng tới mô hình Trí tuệ nhân tạo trong Vận hành CNTT (AIOps), cụ thể bao gồm các hạng mục:
