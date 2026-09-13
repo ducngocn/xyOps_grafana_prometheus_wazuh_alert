@@ -219,7 +219,7 @@ Một kiến trúc giám sát tiêu chuẩn Enterprise yêu cầu sự tách bi�
         \hline
         \textbf{Tiêu chí} & \textbf{Luồng Metrics (Prometheus)} & \textbf{Luồng Logs \& Events (Wazuh / OpenSearch)} & \textbf{Luồng Network Traffic (Zabbix SNMP)} \\ \hline
         \textbf{Bản chất} & Dữ liệu định lượng (Numbers) biến thiên theo thời gian. & Chuỗi văn bản chi tiết (Text \& Strings) lưu vết sự kiện. & Thông số băng thông (bps/pps) và trạng thái kết nối (Link Up/Down). \\ \hline
-        \textbf{Ví dụ} & \texttt{RAM = 80\%}, \texttt{CPU = 90\%} & \texttt{"Invalid user hieunn from 192.168.68.181..."} & \texttt{ifInOctets = 100Mbps}, \texttt{Link Down (Operational status = 2)} \\ \hline
+        \textbf{Ví dụ} & \texttt{RAM = 80\%}, \texttt{CPU = 90\%} & \texttt{"Invalid user hieunn from <ATTACKER\_IP>..."} & \texttt{ifInOctets = 100Mbps}, \texttt{Link Down (Operational status = 2)} \\ \hline
         \textbf{Lưu trữ} & Prometheus TSDB (Tối ưu nén dữ liệu chuỗi thời gian). & Wazuh Indexer (Tối ưu đánh chỉ mục và tìm kiếm văn bản). & Zabbix MySQL Database (Lưu vết dữ liệu giám sát mạng). \\ \hline
     \end{tabularx}
 \end{table}
@@ -239,7 +239,7 @@ Kiến trúc hệ thống được phân chia thành 5 khối chức năng, ho�
 
 \begin{enumerate}
     \item \textbf{Khối Client (Máy chủ mục tiêu):} Nơi triển khai các tác tử thu thập dữ liệu bao gồm Node Exporter (giám sát tài nguyên phần cứng) và Wazuh Agent (giám sát an toàn thông tin).
-    \item \textbf{Khối Thiết bị Mạng (EVE-NG Lab):} Bao gồm pfSense Firewall (\texttt{192.168.68.176}), pfSense Gateway 1 (\texttt{192.168.68.173}), pfSense Gateway 2 (\texttt{192.168.68.182}) và Core Switch Cisco (\texttt{192.168.68.180}) cung cấp dữ liệu qua dịch vụ SNMP Daemon (UDP 161).
+    \item \textbf{Khối Thiết bị Mạng (EVE-NG Lab):} Bao gồm pfSense Firewall, pfSense Gateway 1, pfSense Gateway 2 và Core Switch Cisco cung cấp dữ liệu qua dịch vụ SNMP Daemon (UDP 161).
     \item \textbf{Khối Wazuh SIEM \& Zabbix Server (Xử lý dữ liệu chuyên dụng):}
     \begin{itemize}
         \item \textit{Wazuh Agent} đẩy dữ liệu log về \textit{Wazuh Manager} giải mã, đối chiếu quy tắc bảo mật và nạp vào \textit{Wazuh Indexer (OpenSearch)}.
@@ -261,33 +261,53 @@ Kiến trúc hệ thống được phân chia thành 5 khối chức năng, ho�
 
 \section{CHƯƠNG 3: QUY TRÌNH TRIỂN KHAI THỰC TẾ}
 
-Chương này chi tiết hóa toàn bộ quy trình xây dựng và triển khai thực tế của hệ thống giám sát tập trung, từ việc đóng gói cụm vi dịch vụ Prometheus, Grafana, Zabbix trên Docker, cấu hình tác tử Node Exporter và Wazuh Agent trên các máy chủ mục tiêu, cấu hình SNMP trên hệ thống thiết bị mạng pfSense và Cisco Core Switch, cho đến việc khởi tạo Dashboards và tự động hóa cảnh báo qua Telegram Webhook.
+Chương này trình bày toàn bộ quy trình xây dựng và triển khai thực tế của hệ thống giám sát tập trung. Nội dung tập trung vào kiến trúc đóng gói vi dịch vụ trên nền Container (Docker), cấu hình tác tử thu thập dữ liệu (Node Exporter, Wazuh Agent), thiết lập giao thức không tác tử (SNMPv2) cho hạ tầng mạng, cũng như quy hoạch Bảng điều khiển (Dashboard) và tự động hóa cảnh báo đa kênh.
 
-\subsection{3.1 Triển khai Nền tảng Giám sát Cơ sở (Prometheus, Grafana \& Node Exporter)}
-Để đảm bảo tính linh hoạt và dễ dàng cô lập môi trường, hệ thống giám sát trung tâm được triển khai hoàn toàn trên nền tảng Container (Docker). Dưới đây là các bước cấu hình chi tiết để khởi chạy:
+\subsection{3.1 Kiến trúc Triển khai và Quy hoạch Hạ tầng}
+Để đảm bảo tính linh hoạt, khả năng đóng gói độc lập và quản lý tập trung, toàn bộ cụm dịch vụ giám sát lõi được chuẩn hóa dưới dạng các Container. 
 
-\textbf{Bước 1: Cấu hình hệ thống Prometheus và Grafana trên máy chủ Master}
-\begin{enumerate}
-    \item Tạo thư mục chứa dữ liệu và tệp cấu hình:
-\begin{lstlisting}[language=bash]
-sudo mkdir -p /opt/monitoring
-cd /opt/monitoring
-\end{lstlisting}
-    \item Khởi tạo tệp cấu hình \texttt{prometheus.yml} để định tuyến mục tiêu thu thập dữ liệu:
-\begin{lstlisting}[language=yaml]
-global:
-  scrape_interval: 15s
-scrape_configs:
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-\end{lstlisting}
-    \item Tạo tệp \texttt{docker-compose.yml} định nghĩa cụm vi dịch vụ:
+Thông số triển khai hạ tầng và quy hoạch tài nguyên được tổng hợp chi tiết trong Bảng~\ref{tab:deployment_matrix}:
+
+\begin{table}[H]
+\centering
+\caption{Ma trận Triển khai Hệ thống Hạ tầng Giám sát}
+\label{tab:deployment_matrix}
+\begin{tabularx}{\textwidth}{|l|X|}
+\hline
+\textbf{Thành phần / Dịch vụ} & \textbf{Vai trò Chức năng} \\ \hline
+Master Monitoring & Prometheus, Grafana, Zabbix Stack \\ \hline
+Wazuh Manager \& SIEM & Xử lý Security Logs \& OpenSearch \\ \hline
+pfSense Firewall & Giám sát Firewall WAN/LAN \\ \hline
+pfSense Gateways & Giám sát Subnet Gateways \\ \hline
+Core Switch Cisco & Giám sát Trunking \& VLAN \\ \hline
+Client Nodes & Node Exporter \& Wazuh Agent \\ \hline
+\end{tabularx}
+\end{table}
+
+\textbf{1. Đóng gói Cụm Dịch vụ Giám sát Lõi (Docker Compose Stack)}\\
+\textit{a) Khái niệm và Ý nghĩa của Docker Compose:}\\
+Docker Compose là công cụ cho phép định nghĩa và quản lý các ứng dụng đa Container (Multi-container applications) thông qua một tệp cấu hình kiểu khai báo YAML (\texttt{docker-compose.yml}). Trong kiến trúc của đồ án, việc ứng dụng Docker Compose mang lại các lợi ích kỹ thuật cốt lõi:
+\begin{itemize}
+    \item \textbf{Cấu hình dưới dạng Mã nguồn (Infrastructure as Code - IaC):} Toàn bộ các thông số như Cổng (Ports), Khối lưu trữ (Volumes), Biến môi trường (Environment Variables) và Chính sách tự khởi chạy (Restart Policy) được lưu trữ tập trung, giúp quản trị viên dễ dàng tái bản môi trường mà không cần chạy hàng loạt lệnh \texttt{docker run} thủ công.
+    \item \textbf{Đồng bộ Vòng đời Dịch vụ (Lifecycle Management):} Cho phép khởi chạy, dừng hoặc kiểm tra trạng thái của toàn bộ cụm máy chủ giám sát lõi chỉ bằng một câu lệnh duy nhất (\texttt{docker compose up -d}).
+\end{itemize}
+
+\textit{b) Lý do hợp nhất 3 phân hệ (Prometheus, Grafana, Zabbix) vào cùng một Stack:}\\
+Việc gộp chung Prometheus, Grafana và Zabbix Server/Web vào cùng một tệp \texttt{docker-compose.yml} tại máy chủ Master xuất phát từ các lý do kỹ thuật sau:
+\begin{itemize}
+    \item \textbf{Tối ưu hóa Mạng nội bộ (Shared Container Network):} Các vi dịch vụ cùng tham gia vào một mạng ảo (Bridge Network) dùng chung. Điều này cho phép Grafana kết nối tới Prometheus API (\texttt{http://prometheus:9090}) và Zabbix API (\texttt{http://zabbix-web:8080}) trực tiếp qua tên dịch vụ (Service Name) nhờ cơ chế phân giải tên miền (DNS nội bộ) của Docker, giúp lược bỏ nhu cầu mở cổng mạng công khai không cần thiết.
+    \item \textbf{Quản lý Phụ thuộc và Thứ tự Khởi chạy:} Zabbix Server và Zabbix Web đòi hỏi cơ sở dữ liệu MySQL phải sẵn sàng trước khi kết nối. Docker Compose giúp thiết lập mối quan hệ phụ thuộc (\texttt{depends\_on}) và đảm bảo dữ liệu được ghi khởi tạo đúng trình tự.
+    \item \textbf{Quy hoạch Lưu trữ Tập trung:} Dữ liệu cấu hình (\texttt{prometheus.yml}) và dữ liệu lưu vết của các phân hệ được quy hoạch chung tại thư mục gốc \texttt{/opt/monitoring}, tối ưu hóa quy trình sao lưu (Backup) và khôi phục sự cố (Disaster Recovery).
+\end{itemize}
+
+Toàn bộ cụm dịch vụ được định nghĩa thống nhất trong tệp cấu hình \texttt{docker-compose.yml}:
+
 \begin{lstlisting}[language=yaml]
 version: '3.8'
 services:
   prometheus:
     image: prom/prometheus:latest
+    container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -296,30 +316,41 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    container_name: grafana
     ports:
       - "3000:3000"
     restart: unless-stopped
+
+  zabbix-server:
+    image: zabbix/zabbix-server-mysql:latest
+    container_name: zabbix-server
+    ports:
+      - "10051:10051"
+    environment:
+      - DB_SERVER_HOST=zabbix-mysql
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix_pass
+    restart: unless-stopped
+
+  zabbix-web:
+    image: zabbix/zabbix-web-nginx-mysql:latest
+    container_name: zabbix-web
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_SERVER_HOST=zabbix-mysql
+      - MYSQL_USER=zabbix
+      - MYSQL_PASSWORD=zabbix_pass
+      - ZBX_SERVER_HOST=zabbix-server
+    restart: unless-stopped
 \end{lstlisting}
-    \item Kích hoạt và chạy ngầm cụm dịch vụ:
-\begin{lstlisting}[language=bash]
-sudo docker compose up -d
-\end{lstlisting}
-\end{enumerate}
 
-\textbf{Bước 2: Cài đặt công cụ đo lường Node Exporter trên máy con (Clients)}\\
-Để công cụ tự động khởi động cùng hệ điều hành, Node Exporter được cấu hình chuẩn theo dạng Systemd Service. Quản trị viên chỉ cần sao chép và chạy toàn bộ khối lệnh sau:
-\begin{lstlisting}[language=bash]
-# Tải và giải nén phần mềm
-cd /tmp
-wget https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz
-tar -xvf node_exporter-1.8.2.linux-amd64.tar.gz
-sudo mv node_exporter-1.8.2.linux-amd64/node_exporter /usr/local/bin/
+\textbf{2. Chuẩn hóa Tác tử Thu thập Dữ liệu Metrics (Node Exporter)}\\
+Trên các máy chủ mục tiêu (Clients), tác tử Node Exporter được triển khai dưới dạng dịch vụ quản lý bởi Systemd (\texttt{node\_exporter.service}) nhằm đảm bảo khả năng tự khởi chạy khi khởi động hệ thống và cô lập quyền hạn vận hành bằng tài khoản hệ thống không có đặc quyền root (\texttt{node\_exporter}).
 
-# Tạo tài khoản hệ thống cô lập để tăng tính bảo mật
-sudo useradd -rs /bin/false node_exporter
+Cấu hình tệp dịch vụ Systemd (\texttt{/etc/systemd/system/node\_exporter.service}):
 
-# Tạo file cấu hình dịch vụ Systemd tự khởi động
-sudo bash -c 'cat <<EOF > /etc/systemd/system/node_exporter.service
+\begin{lstlisting}[language=ini]
 [Unit]
 Description=Node Exporter
 After=network.target
@@ -332,220 +363,47 @@ ExecStart=/usr/local/bin/node_exporter
 
 [Install]
 WantedBy=multi-user.target
-EOF'
-
-# Kích hoạt và chạy dịch vụ
-sudo systemctl daemon-reload
-sudo systemctl enable node_exporter
-sudo systemctl start node_exporter
 \end{lstlisting}
 
-\textbf{Bước 3: Xác thực luồng dữ liệu Metrics trên Prometheus}\\
-Sau khi hoàn tất tiến trình cài đặt Node Exporter, quản trị viên truy cập vào giao diện web của Prometheus để kiểm tra trạng thái hệ thống mục tiêu (Targets) nhằm đảm bảo dữ liệu phần cứng (Metrics) đang được thu thập ổn định:
+\textbf{3. Xác thực Luồng Dữ liệu Metrics trên Prometheus}\\
+Sau khi khởi chạy tác tử, quản trị viên tiến hành xác thực trạng thái kết nối các mục tiêu (Targets) trên giao diện quản trị Prometheus nhằm bảo đảm chu kỳ kéo dữ liệu (Scrape Interval) 15 giây hoạt động ổn định.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-4.png}
-    \caption{Giao diện kiểm tra trạng thái Targets trên Prometheus}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-5.png}
-    \caption{Xác thực luồng dữ liệu đo lường thu thập thành công}
-\end{figure}
-
-\textbf{Bước 4: Thiết lập Cơ chế Cảnh báo Đo lường (Grafana Alerting)}\\
-Hệ thống giám sát được tích hợp khả năng phản ứng tức thời thông qua việc định tuyến cảnh báo từ Grafana về Telegram:
-
-\textit{1. Khai báo kênh tiếp nhận (Contact Points)}\\
-Quá trình kết nối tới Telegram yêu cầu xác thực thông qua hai tham số bảo mật: \texttt{BOT API Token} và \texttt{Chat ID}.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-6.png}
-    \caption{Giao diện khởi tạo Contact Point tích hợp Telegram}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-7.png}
-    \caption{Khai báo tham số bảo mật Token và Chat ID}
-\end{figure}
-
-\textit{2. Khai báo Luật cảnh báo (Alert Rules)}\\
-Luật cảnh báo được cấu trúc dựa trên PromQL nhằm đánh giá liên tục các chỉ số tài nguyên (ví dụ: cảnh báo khi CPU hoặc RAM bị quá tải).
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-8.png}
-    \caption{Giao diện khởi tạo Rule đo lường tài nguyên}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-9.png}
-    \caption{Thiết lập biểu thức toán học đánh giá (Expressions)}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-10.png}
-    \caption{Cấu hình điều kiện và ngưỡng kích hoạt (Threshold)}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-11.png}
-    \caption{Định dạng nội dung thông báo gửi về hệ thống}
-\end{figure}
-
-\textit{3. Xác thực kết quả tích hợp}\\
-Sau khi luồng cấu hình hoàn tất, hệ thống sẽ tự động phân tích và đẩy tín hiệu báo động về ứng dụng Telegram của người quản trị mỗi khi phát sinh vi phạm tài nguyên.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-12.png}
-    \caption{Minh họa cảnh báo sự cố trả về nhóm Telegram thành công}
-\end{figure}
+\textbf{4. Thiết lập Kênh Cảnh báo Đo lường (Grafana Alerting via Telegram)}\\
+Hệ thống tích hợp kênh tiếp nhận cảnh báo Telegram (Contact Point) thông qua Telegram Bot API (\texttt{BOT API Token} và \texttt{Chat ID}). Bộ quy tắc cảnh báo (Alert Rules) sử dụng truy vấn PromQL đánh giá liên tục tài nguyên hệ thống (CPU, RAM, Disk), tự động kích hoạt thông báo sự cố tức thời về nhóm Telegram của quản trị viên.
 
 \subsection{3.2 Tích hợp và Cấu hình Mạng Wazuh Indexer}
-Theo thiết kế mặc định vì lý do bảo mật, Wazuh Indexer chỉ chấp nhận kết nối cục bộ (Loopback \texttt{127.0.0.1}). Để Grafana có thể truy xuất dữ liệu từ bên ngoài, cấu hình mạng cần được can thiệp sâu:
-\begin{enumerate}
-    \item \textbf{Chỉnh sửa cấu hình lõi:} Mở tệp \texttt{/etc/wazuh-indexer/opensearch.yml} và thay đổi tham số bind IP \texttt{network.host} thành \texttt{0.0.0.0}. Lệnh can thiệp:
-\begin{lstlisting}[language=bash]
-sudo sed -i 's/network.host: "127.0.0.1"/network.host: "0.0.0.0"/' /etc/wazuh-indexer/opensearch.yml
-\end{lstlisting}
-    \item \textbf{Khởi tạo lại cấu trúc bảo mật:} Việc đổi IP sẽ phá vỡ xác thực nội bộ của Cluster. Quản trị viên tiến hành chạy tập lệnh \texttt{indexer-security-init.sh} kèm theo chứng thư số (\texttt{admin.pem}) để nạp lại cấu hình bảo mật mới vào bộ nhớ mà không làm gián đoạn dịch vụ:
-\begin{lstlisting}[language=bash]
-sudo /usr/share/wazuh-indexer/bin/indexer-security-init.sh
-\end{lstlisting}
-\end{enumerate}
+Để giao diện Grafana có thể truy vấn trực tiếp cơ sở dữ liệu nhật ký an ninh từ Wazuh Indexer (OpenSearch REST API cổng 9200), cấu hình phân hệ Indexer cần được tinh chỉnh tham số \texttt{network.host} trong tệp cấu hình \texttt{opensearch.yml} từ địa chỉ loopback \texttt{127.0.0.1} sang địa chỉ lắng nghe toàn cục \texttt{0.0.0.0}.
 
 \subsection{3.3 Cài đặt Cảm biến An ninh (Wazuh Agent)}
-Cảm biến an ninh được triển khai đồng loạt trên các máy chủ mục tiêu thông qua gói cài đặt \texttt{.deb}.
-\begin{itemize}
-    \item Trong quá trình cài đặt, biến môi trường \texttt{WAZUH\_MANAGER} được khai báo trỏ trực tiếp về địa chỉ IP của máy chủ xử lý trung tâm (Wazuh Server). Lệnh cài đặt tự động hóa:
-\begin{lstlisting}[language=bash]
-wget -q https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.12.0-1_amd64.deb -O /tmp/wazuh-agent.deb
-sudo WAZUH_MANAGER='192.168.68.170' WAZUH_AGENT_NAME='xyops' dpkg -i /tmp/wazuh-agent.deb
-\end{lstlisting}
-    \item Sau khi kích hoạt dịch vụ, trạng thái kết nối được xác thực bằng công cụ quản lý nội bộ của hệ thống:
-\begin{lstlisting}[language=bash]
-sudo /var/ossec/bin/agent_control -l
-\end{lstlisting}
-\end{itemize}
+Tác tử Wazuh Agent được cài đặt trên các máy chủ mục tiêu để thu thập nhật ký hệ thống (Syslog, Auth log, Audit log) và kiểm tra tính toàn vẹn tệp tin (FIM). Trong quá trình khởi tạo, biến môi trường \texttt{WAZUH\_MANAGER} được khai báo trỏ về địa chỉ IP của máy chủ Wazuh Server. Sau khi kích hoạt dịch vụ, trạng thái kết nối và mã định danh tác tử (Agent ID) được xác nhận thông qua công cụ quản lý \texttt{agent\_control}.
 
 \subsection{3.4 Cấu hình Nguồn Dữ liệu (Data Source) trên Grafana}
-Để Grafana có thể đọc hiểu định dạng của Wazuh Indexer (OpenSearch), cần thực hiện hai bước tích hợp:
+Để Grafana có thể đọc và trực quan hóa dữ liệu nhật ký từ Wazuh Indexer, hai bước tích hợp được thực thi:
 \begin{itemize}
-    \item \textbf{Cài đặt Plugin:} Triển khai gói mở rộng \texttt{grafana-opensearch-datasource} trực tiếp vào vùng chứa (Container) của Grafana thông qua công cụ \texttt{grafana-cli}:
-\begin{lstlisting}[language=bash]
-sudo docker exec grafana grafana cli plugins install grafana-opensearch-datasource
-\end{lstlisting}
-    \item \textbf{Thiết lập kết nối:} Khai báo Endpoint API tới cổng \texttt{9200}. Chế độ định tuyến được thiết lập là \textbf{Proxy} nhằm tránh lỗi chính sách nguồn gốc chéo (CORS). Thông số xác thực sử dụng tài khoản \texttt{admin} nội bộ, kèm theo thiết lập bỏ qua kiểm duyệt chứng thư số tự ký (TLS Skip Verify). Dữ liệu được trỏ đích xác vào Index Pattern \texttt{wazuh-alerts-*}.
+    \item \textbf{Cài đặt Plugin OpenSearch:} Tích hợp gói mở rộng \texttt{grafana-opensearch-datasource} vào môi trường Container Grafana.
+    \item \textbf{Khởi tạo Data Source:} Khai báo Endpoint API tới cổng \texttt{9200} với chế độ kết nối Proxy. Thông số xác thực sử dụng tài khoản \texttt{admin} nội bộ, bỏ qua kiểm tra chứng thư tự ký (TLS Skip Verify), và định tuyến truy vấn đến Index Pattern \texttt{wazuh-alerts-*}.
 \end{itemize}
 
-\subsection{3.5 Xây dựng Bảng điều khiển (Dashboards)}
-Sau khi hội tụ thành công các nguồn dữ liệu, các bảng điều khiển (Dashboard) được thiết kế để cung cấp bức tranh toàn cảnh về hệ thống.
+\subsection{3.5 Xây dựng Bảng điều khiển Tập trung (Dashboards)}
+Sau khi hội tụ 3 nguồn dữ liệu chính, Grafana cung cấp giao diện quản trị trực quan hóa đa chiều:
 \begin{itemize}
-    \item Biểu đồ Metrics phản ánh mức độ tiêu thụ tài nguyên phần cứng (CPU, RAM, Disk I/O) theo thời gian thực.
-    \item Bảng Log an ninh thống kê chi tiết các sự kiện tấn công bị Wazuh ngăn chặn, phân loại theo mức độ nghiêm trọng (Level) và Rule ID.
+    \item \textbf{Bảng theo dõi Metrics:} Trực quan hóa mức độ tiêu thụ tài nguyên phần cứng (CPU Load, Memory Usage, Network Traffic, Disk I/O) theo chuỗi thời gian từ Prometheus.
+    \item \textbf{Bảng quan sát Security Logs:} Thống kê các sự kiện tấn công bị Wazuh phát hiện và ngăn chặn, hỗ trợ bộ lọc chi tiết theo mức độ nghiêm trọng (Alert Level) và mã luật (Rule ID).
+    \item \textbf{Bảng hạ tầng Mạng Zabbix:} Theo dõi băng thông và trạng thái hoạt động các cổng kết nối (Port Status) của Router/Firewall và Core Switch.
 \end{itemize}
 
-\subsection{3.6 Thiết lập Cơ chế Cảnh báo (Alerting) trên hệ sinh thái Wazuh}
-Quy trình tinh chỉnh và kích hoạt các luồng cảnh báo an ninh được thao tác trực tiếp trên giao diện quản trị. Chuỗi thao tác thực tế được minh họa chi tiết dưới đây:
+\subsection{3.6 Cấu hình Quy tắc và Luồng Cảnh báo An ninh trên Wazuh SIEM}
+Quy trình phát hiện và cảnh báo an ninh trên Wazuh SIEM được thiết lập dựa trên các quy tắc phân tích nhật ký (Security Rules) và cơ chế chuyển tiếp sự kiện (Alert Forwarding).
+Các sự kiện bảo mật có độ nghiêm trọng cao (Level $\ge 7$ hoặc các cảnh báo SSH Brute-force, Privilege Escalation) sẽ tự động sinh cảnh báo và kích hoạt luồng chuyển tiếp dữ liệu sang hệ thống Grafana Alerting cũng như Telegram Bot. Quá trình này loại bỏ nhu cầu can thiệp thủ công và giúp đội ngũ SOC phản ứng kịp thời trước các nguy cơ an ninh mạng.
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-13.png}
-    \caption{Giao diện khởi tạo luồng cảnh báo trên Wazuh}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-14.png}
-    \caption{Thiết lập thông số và điều kiện kích hoạt}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-15.png}
-    \caption{Cấu hình chi tiết bộ luật an ninh}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-16.png}
-    \caption{Thiết lập định tuyến cảnh báo (Routing)}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.8\textwidth]{images/image-17.png}
-    \caption{Lưu cấu hình và kích hoạt thành công}
-\end{figure}
-
-\subsection{3.7 Triển khai Zabbix và Giám sát Thiết bị Mạng (EVE-NG Lab)}
-
-Để hoàn thiện hệ thống giám sát tập trung cho toàn bộ hạ tầng (Server, Security, Network), hệ thống tích hợp thêm phân hệ giám sát mạng chuyên dụng \textbf{Zabbix} thông qua cơ chế không agent (SNMPv2).
-
-\textbf{1. Triển khai Zabbix Container Stack:}\\
-Zabbix Server, Zabbix Web (Nginx) và cơ sở dữ liệu MySQL được đóng gói gộp chung vào tệp \texttt{docker-compose.yml} tại máy chủ trung tâm \texttt{/opt/monitoring}:
-\begin{lstlisting}[language=yaml]
-mysql-server:
-  image: mysql:8.0
-  container_name: zabbix-mysql
-  environment:
-    - MYSQL_ROOT_PASSWORD=zabbix_root_pass
-    - MYSQL_USER=zabbix
-    - MYSQL_PASSWORD=zabbix_pass
-    - MYSQL_DATABASE=zabbix
-
-zabbix-server:
-  image: zabbix/zabbix-server-mysql:latest
-  container_name: zabbix-server
-  environment:
-    - DB_SERVER_HOST=mysql-server
-    - MYSQL_USER=zabbix
-    - MYSQL_PASSWORD=zabbix_pass
-
-zabbix-web:
-  image: zabbix/zabbix-web-nginx-mysql:latest
-  container_name: zabbix-web
-  ports:
-    - "8080:8080"
-  environment:
-    - DB_SERVER_HOST=mysql-server
-    - MYSQL_USER=zabbix
-    - MYSQL_PASSWORD=zabbix_pass
-    - ZBX_SERVER_HOST=zabbix-server
-\end{lstlisting}
-
-\textbf{2. Cấu hình SNMP trên các Thiết bị Mạng (EVE-NG Lab):}
+\subsection{3.7 Triển khai Zabbix và Giám sát Hạ tầng Mạng (EVE-NG Lab)}
+Để hoàn thiện mô hình giám sát toàn diện cho cả thiết bị hạ tầng mạng, hệ thống tích hợp Zabbix Server thông qua giao thức SNMPv2 không tác tử (Agentless):
 \begin{itemize}
-    \item \textbf{Hệ thống pfSense (Firewall \& Gateways):}
-    Đối với pfSense Firewall (\texttt{192.168.68.176}), pfSense Gateway 1 (\texttt{192.168.68.173}) và pfSense Gateway 2 (\texttt{192.168.68.182}), bật dịch vụ SNMP Daemon trên giao diện Web GUI (\texttt{Services} $\rightarrow$ \texttt{SNMP} $\rightarrow$ Community: \texttt{public}). Cấu hình luật Firewall WAN cho phép luồng giao thông UDP port 161 (SNMP) đi qua.
-    \item \textbf{Hệ thống Core Switch Cisco:}
-    Đối với Core Switch Cisco (\texttt{192.168.68.180}), cấu hình IP Out-of-band Management trên giao diện \texttt{Gi0/2} kết nối ra Cloud Net và kích hoạt SNMP Community:
-\begin{lstlisting}[language=bash]
-Switch> enable
-Switch# configure terminal
-Switch(config)# interface GigabitEthernet 0/2
-Switch(config-if)# no switchport
-Switch(config-if)# ip address 192.168.68.180 255.255.255.0
-Switch(config-if)# no shutdown
-Switch(config)# snmp-server community public RO
-Switch(config)# end
-Switch# write memory
-\end{lstlisting}
+    \item \textbf{Hệ thống pfSense (Firewall \& Gateways):} Tại pfSense Firewall, pfSense Gateway 1 và pfSense Gateway 2, dịch vụ SNMP Daemon được kích hoạt với tham số Community \texttt{public}, đồng thời mở cổng UDP 161 trên Firewall WAN.
+    \item \textbf{Core Switch Cisco:} Tại Core Switch Cisco, cổng quản trị Out-of-band (\texttt{Gi0/2}) được gán IP trong dải quản trị và kích hoạt tính năng \texttt{snmp-server community public RO}.
+    \item \textbf{Tích hợp Zabbix Plugin trên Grafana:} Sử dụng plugin \texttt{alexanderzobnin-zabbix-app} kết nối tới Zabbix API qua giao thức HTTP (cổng 8080) để đồng bộ các chỉ số băng thông và trạng thái thiết bị mạng lên giao diện Grafana.
+    \item \textbf{Cảnh báo Siêu tốc qua Telegram Webhook:} Zabbix được cấu hình Media Type Telegram Webhook gửi thông báo trực tiếp đến nhóm quản trị. Với chu kỳ quét \texttt{Update interval = 5s} và biểu thức Trigger sử dụng hàm \texttt{last()}, các sự cố đứt gãy liên kết (\texttt{Link down}) được phát hiện và phát tín hiệu cảnh báo màu sắc đỏ \texttt{[PROBLEM]} / xanh \texttt{[RESOLVED]} trong vòng 5--10 giây.
 \end{itemize}
-
-\textbf{3. Tích hợp Zabbix vào Grafana:}\\
-Cài đặt plugin \texttt{alexanderzobnin-zabbix-app} vào Grafana và cấu hình Data Source trỏ API về \texttt{http://192.168.68.181:8080/api\_jsonrpc.php} (Xác thực tài khoản \texttt{Admin}/\texttt{zabbix}).
-
-\textbf{4. Tự động hóa Cảnh báo qua Telegram Webhook:}\\
-Hệ thống sử dụng tính năng Telegram Webhook tích hợp sẵn của Zabbix (\texttt{Alerts} $\rightarrow$ \texttt{Media types} $\rightarrow$ \texttt{Telegram}) với \texttt{api\_token} và \texttt{api\_parse\_mode=html}. Gán Telegram Media cho tài khoản Admin với địa chỉ nhận là Chat ID nhóm Telegram (\texttt{-5477737347}). Tối ưu chu kỳ quét \texttt{Update interval = 5s} và điều chỉnh biểu thức Trigger sang hàm \texttt{last()} để phát hiện sự cố rớt mạng (\texttt{Link down}) và phát thông báo cảnh báo đỏ \texttt{[PROBLEM]} / xanh \texttt{[RESOLVED]} tức thì chỉ sau 5 đến 10 giây.
 
 \section{CHƯƠNG 4: TÍCH HỢP ĐIỀU TRA SỰ CỐ}
 Một trong những điểm nhấn kỹ thuật quan trọng nhất của hệ thống là khả năng liên kết sâu (Deep Linking) giữa giao diện cảnh báo (Telegram) và giao diện truy vết (Wazuh Threat Hunting), giúp thu hẹp tối đa thời gian phản ứng sự cố (MTTR - Mean Time To Respond).
@@ -561,7 +419,7 @@ Khi Grafana truy vấn Wazuh Indexer thông qua giao thức REST API, hệ thố
 Cụ thể, một đường link định tuyến URL được sinh tự động và nhúng trực tiếp vào nút bấm \textbf{"CRITICAL"}. Đường link này tuân thủ cấu trúc mã hóa RISON của OpenSearch Dashboards, cho phép truyền thẳng câu lệnh truy vấn (KQL - Kuery) vào thanh tìm kiếm của trình duyệt:
 
 \begin{verbatim}
-https://<WAZUH_IP>/app/discover#/?_a=(query:(language:kuery,query:'data.srcip:
+https://<WAZUH_SERVER_IP>/app/discover#/?_a=(query:(language:kuery,query:'data.srcip:
 "{{ index .Labels "data.srcip" }}"'))
 \end{verbatim}
 
@@ -571,7 +429,7 @@ Nhờ sự kết hợp của hai kỹ thuật trên, luồng vận hành SOC th�
     \item Grafana phát hiện cuộc tấn công (Ví dụ: SSH Brute-force) và bắn tin nhắn cảnh báo tới nhóm điều hành trên Telegram.
     \item Quản trị viên (SOC Analyst) nhấn vào nút \textbf{"CRITICAL"} đính kèm phía dưới tin nhắn.
     \item Trình duyệt lập tức chuyển hướng và đăng nhập thẳng vào giao diện OpenSearch Dashboards của Wazuh SIEM.
-    \item Dựa vào bộ mã RISON, thanh tìm kiếm KQL của Wazuh tự động điền sẵn bộ lọc truy vấn bằng chính IP của kẻ tấn công (Ví dụ: \texttt{data.srcip: "192.168.68.181"}).
+    \item Dựa vào bộ mã RISON, thanh tìm kiếm KQL của Wazuh tự động điền sẵn bộ lọc truy vấn bằng chính IP nguồn của kẻ tấn công (Ví dụ: \texttt{data.srcip: "10.0.0.x"}).
     \item Quản trị viên ngay lập tức quan sát được toàn bộ chuỗi hành vi của tác nhân độc hại trên một màn hình duy nhất, lược bỏ hoàn toàn các bước tra cứu và trích xuất log thủ công tốn thời gian.
 \end{enumerate}
 
